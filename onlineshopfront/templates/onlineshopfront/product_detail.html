@@ -1,0 +1,14 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>{{ product.name }}</h2>
+<img src="{% static 'images/coke.png' %}" alt="{{ product.name }}" style="height:160px;">
+<div>SKU: {{ product.sku }}</div>
+<div>Category: {{ product.category.name }}</div>
+<div>Price: ${{ product.price }}</div>
+<div>Rating: {{ product.rating }}</div>
+<div>Stock: {{ product.stock }}</div>
+<p>{{ product.description }}</p>
+<p><a href="/products/">Back to products</a></p>
+{% endblock %}

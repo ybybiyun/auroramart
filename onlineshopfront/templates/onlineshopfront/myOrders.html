@@ -1,0 +1,18 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+
+{% block content %}
+    <h2>My Orders</h2>
+    <div class="order-list">
+        {% for order in orders %}
+            <div class="order">
+                <h3>Order #{{ order.id }}</h3>
+                <p>Status: {{ order.status }}</p>
+                <p>Total: ${{ order.total }}</p>
+            </div>
+        {% empty %}
+            <p>No orders found.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

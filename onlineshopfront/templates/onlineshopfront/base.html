@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AuroraMart - {% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'onlineshopfront/css/styles.css' %}">
+</head>
+
+<body>
+    <div class="header">
+        <a href="{% url 'onlineshopfront:index' %}" class="logo-link">
+            <img class="logo-img" src="{% static 'images/AuroraMartLogo.png' %}" alt="AuroraMart Logo">
+        </a>
+
+        <div class="cart">
+            🛒
+            {% if cart_count %}
+            <span class="cart-count">{{ cart_count }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="page-container">
+
+        <div class="sidebar">
+            <a href="{% url 'onlineshopfront:myOrder' %}">My orders</a>
+            <a href="{% url 'onlineshopfront:myProfile' %}">My profile</a>
+            <a href="{% url 'onlineshopfront:settings' %}">Settings</a>
+        </div>
+
+        <main class="content">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+</body>
+
+</html>

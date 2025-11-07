@@ -1,0 +1,17 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+{% block content %}
+    <div class="main">
+        <h2>Welcome to AuroraMart</h2>
+        <div class="products">
+            {% for product in featured %}
+                <div class="product-card">
+                    <img src="{% static 'image/coke.png' %}" alt="{{ product.product_name }}">
+                    <h3>{{ product.product_name }}</h3>
+                    <p>{{ product.product_description }}</p>
+                    <p class="price">${{ product.unit_price }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
