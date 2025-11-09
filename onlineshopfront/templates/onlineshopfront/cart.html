@@ -1,0 +1,67 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px;margin:20px auto;padding:18px;background:#fff;border-radius:6px">
+    <h2>Your Shopping Cart</h2>
+    {% if cart_notice %}
+    <div style="text-align:center;margin-bottom:12px">
+        <div style="display:inline-block;background:#e9fff1;color:#0b7a3a;padding:8px 12px;border-radius:20px;border:1px solid #bff0d4">{{ cart_notice }}</div>
+    </div>
+    {% endif %}
+
+    {% if items %}
+    <form method="post" action="{% url 'onlineshopfront:update_cart' %}">
+        {% csrf_token %}
+        <table style="width:100%;border-collapse:collapse;margin-top:12px">
+            <thead>
+                <tr>
+                    <th style="text-align:left;padding:8px">Product</th>
+                    <th style="padding:8px">Price</th>
+                    <th style="padding:8px">Qty</th>
+                    <th style="padding:8px">Subtotal</th>
+                    <th style="padding:8px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for it in items %}
+                <tr>
+                    <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku }}</div>
+                    </td>
+                    <td style="padding:8px;text-align:center">${{ it.price }}</td>
+                    <td style="padding:8px;text-align:center"><input type="number" name="qty_{{ it.sku }}"
+                            value="{{ it.quantity }}" min="0" style="width:72px;padding:6px;text-align:center" /></td>
+                    <td style="padding:8px;text-align:center">${{ it.subtotal|floatformat:2 }}</td>
+                    <td style="padding:8px;text-align:center"><a
+                            href="{% url 'onlineshopfront:remove_from_cart' it.sku %}">Remove</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
+            <div></div>
+            <div style="font-size:18px;font-weight:700">Total: ${{ total|floatformat:2 }}</div>
+        </div>
+    </form>
+    <script>
+    // Auto-submit cart form when quantity inputs change (debounced)
+    (function(){
+        const form = document.querySelector('form[action$="/cart/update/"]');
+        if(!form) return;
+        let timer = null;
+        form.querySelectorAll('input[type="number"]').forEach(function(inp){
+            inp.addEventListener('change', function(){
+                if(timer) clearTimeout(timer);
+                timer = setTimeout(function(){ form.submit(); }, 600);
+            });
+        });
+    })();
+    </script>
+    {% else %}
+    <p>Your cart is empty. <a href="{% url 'onlineshopfront:product_list' %}">Continue shopping</a></p>
+    {% endif %}
+</div>
+{% endblock %}
