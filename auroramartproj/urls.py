@@ -21,4 +21,6 @@ from django.urls import include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('onlineshopfront.urls')),
+    path('adminpanel/', include(('adminpanel.urls', 'adminpanel'), namespace='adminpanel')),
+
 ]

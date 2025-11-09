@@ -68,6 +68,9 @@ TEMPLATES = [
         },
     },
 ]
+LOGIN_URL = 'adminpanel:login'
+LOGIN_REDIRECT_URL = 'adminpanel:adminpanel'
+LOGOUT_REDIRECT_URL = 'adminpanel:login'
 
 WSGI_APPLICATION = 'auroramartproj.wsgi.application'
 

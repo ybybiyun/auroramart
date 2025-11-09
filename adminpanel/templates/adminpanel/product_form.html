@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head><title>{% if product %}Edit{% else %}New{% endif %} Product</title></head>
+<body>
+<h1>{% if product %}Edit{% else %}Add{% endif %} Product</h1>
+<form method="post">{% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Save</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}">Cancel</a>
+</form>
+</body>
+</html>
