@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head><title>Adjust Stock {{ product.sku }}</title></head>
+<body>
+<h1>Adjust Stock: {{ product.sku }}</h1>
+<p>{{ product.product_name }}</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Save</button>
+  <a href="{% url 'adminpanel:inventory_list' %}">Cancel</a>
+</form>
+</body>
+</html>

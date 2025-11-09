@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <title>Inventory Management</title>
+  <style>
+    .low { background:#ffe5e5; }
+    .ok { background:#e8ffe8; }
+    .blink { animation: blink 1s linear infinite; }
+    @keyframes blink { 50% { opacity:0.2; } }
+  </style>
+  <script>
+    // simple auto-refresh every 60s for near "real-time"
+    setTimeout(()=>location.reload(), 60000);
+  </script>
+</head>
+<body>
+<h1>Inventory Management</h1>
+
+<form method="get">
+  <input type="text" name="q" placeholder="Search SKU or name" value="{{ q }}">
+  <label>
+    <input type="checkbox" name="low" value="1" {% if show_low %}checked{% endif %}>
+    Show only low stock
+  </label>
+  <button type="submit">Filter</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}">Back to Catalogue</a>
+</form>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>SKU</th>
+    <th>Name</th>
+    <th>Qty On Hand</th>
+    <th>Reorder Qty</th>
+    <th>Status</th>
+    <th>Actions</th>
+  </tr>
+  {% for p in products %}
+  {% with is_low=low_map.p.sku %}
+  <tr class="{% if p.quantity_on_hand <= p.reorder_quantity %}low{% else %}ok{% endif %}">
+    <td>{{ p.sku }}</td>
+    <td>{{ p.product_name }}</td>
+    <td>{{ p.quantity_on_hand }}</td>
+    <td>{{ p.reorder_quantity }}</td>
+    <td>
+      {% if p.quantity_on_hand <= p.reorder_quantity %}
+        <span class="blink">LOW</span>
+      {% else %}OK{% endif %}
+    </td>
+    <td>
+      <a href="{% url 'adminpanel:inventory_update_stock' p.sku %}">Adjust Stock</a>
+    </td>
+  </tr>
+  {% endwith %}
+  {% empty %}
+  <tr><td colspan="6">No products.</td></tr>
+  {% endfor %}
+</table>
+
+<div>
+  {% if products.has_previous %}<a href="?page={{ products.previous_page_number }}&q={{ q }}{% if show_low %}&low=1{% endif %}">Prev</a>{% endif %}
+  Page {{ products.number }} of {{ products.paginator.num_pages }}
+  {% if products.has_next %}<a href="?page={{ products.next_page_number }}&q={{ q }}{% if show_low %}&low=1{% endif %}">Next</a>{% endif %}
+</div>
+</body>
+</html>

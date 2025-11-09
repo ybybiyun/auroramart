@@ -1,0 +1,9 @@
+<!doctype html>
+<html><body>
+<h1>Edit Category</h1>
+<form method="post">{% csrf_token %}
+  {{ form.as_p }}
+  <button>Save</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}">Back</a>
+</form>
+</body></html>
