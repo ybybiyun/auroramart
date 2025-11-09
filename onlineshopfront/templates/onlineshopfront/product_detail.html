@@ -2,13 +2,29 @@
 {% load static %}
 
 {% block content %}
-<h2>{{ product.name }}</h2>
-<img src="{% static 'images/coke.png' %}" alt="{{ product.name }}" style="height:160px;">
-<div>SKU: {{ product.sku }}</div>
-<div>Category: {{ product.category.name }}</div>
-<div>Price: ${{ product.price }}</div>
-<div>Rating: {{ product.rating }}</div>
-<div>Stock: {{ product.stock }}</div>
-<p>{{ product.description }}</p>
-<p><a href="/products/">Back to products</a></p>
+<div style="max-width:900px;margin:20px auto;padding:20px;background:#fff;border-radius:8px">
+    <h2 style="margin-top:0">{{ product.product_name }}</h2>
+    <div style="display:flex;gap:18px;align-items:flex-start">
+        <img src="{% static 'images/coke.png' %}" alt="{{ product.product_name }}" style="height:200px;">
+        <div style="flex:1">
+            <div><strong>SKU:</strong> {{ product.sku }}</div>
+            <div><strong>Category:</strong> {{ product.product_category }}</div>
+            <div style="font-size:20px;font-weight:700;margin-top:8px">${{ product.unit_price }}</div>
+            <div style="color:#666;margin-top:8px">Rating: {{ product.product_rating }}</div>
+            <div style="color:#666;margin-top:8px">Stock: {{ product.quantity_on_hand }}</div>
+            <p style="margin-top:12px">{{ product.product_description }}</p>
+
+            <form method="post" action="{% url 'onlineshopfront:add_to_cart' product.pk %}" style="margin-top:12px">
+                {% csrf_token %}
+                <label>Quantity: <input type="number" name="quantity" value="1" min="1"
+                        style="width:80px;padding:6px;margin-left:6px" /></label>
+                <button type="submit"
+                    style="background:#8e2de2;color:white;border:none;padding:8px 14px;border-radius:8px;margin-left:12px">Add
+                    to cart</button>
+            </form>
+
+            <p style="margin-top:12px"><a href="{% url 'onlineshopfront:product_list' %}">Back to products</a></p>
+        </div>
+    </div>
+</div>
 {% endblock %}

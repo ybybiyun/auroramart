@@ -1,6 +1,9 @@
 from django.db import models
 # Create your models here.
 class Customer(models.Model):
+    # link to Django auth user (optional)
+    from django.contrib.auth import get_user_model
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, null=True, blank=True, related_name='customer_profile')
     GENDER = [
         ('Male', 'Male'),
         ('Female', 'Female')
@@ -69,6 +72,11 @@ class Product(models.Model):
 class Category(models.Model):
     category_id = models.AutoField(primary_key=True)
     category_name = models.CharField(max_length=50, choices = PRODUCT_CATEGORY)
+    # slug used for URLs; nullable initially so migration is non-destructive
+    slug = models.SlugField(max_length=60, unique=True, blank=True, null=True)
+
+    def __str__(self) -> str:
+        return self.category_name
 
 class SubCategory(models.Model):
     subcategory_id = models.AutoField(primary_key=True)
