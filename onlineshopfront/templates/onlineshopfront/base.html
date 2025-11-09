@@ -14,12 +14,50 @@
             <img class="logo-img" src="{% static 'images/AuroraMartLogo.png' %}" alt="AuroraMart Logo">
         </a>
 
-        <div class="cart">
-            🛒
-            {% if cart_count %}
-            <span class="cart-count">{{ cart_count }}</span>
-            {% endif %}
+        <form method="get" action="{% url 'onlineshopfront:product_list' %}" class="search-form">
+            <input name="q" type="search" placeholder="Search products, categories..."
+                value="{{ request.GET.q|default:'' }}" />
+            <button type="submit">Search</button>
+        </form>
+
+        <div class="cart-and-auth">
+            <a class="cart-link" href="{% url 'onlineshopfront:view_cart' %}">
+                <div class="cart">
+                    🛒
+                    {% if cart_count %}
+                    <span class="cart-count">{{ cart_count }}</span>
+                    {% endif %}
+                </div>
+            </a>
+
+            <div class="auth-links">
+                {% if request.user.is_authenticated %}
+                <a class="auth-link" href="{% url 'onlineshopfront:logout' %}">Logout</a>
+                {% else %}
+                <a class="auth-link" href="{% url 'onlineshopfront:login' %}">Sign in</a>
+                <a class="auth-link" href="{% url 'onlineshopfront:create_account' %}">Create account</a>
+                {% endif %}
+            </div>
         </div>
+    </div>
+
+    {% comment %} Flash messages are positioned inside the header so they don't add layout spacing below it {% endcomment %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="category-nav">
+        {% for cat in site_categories %}
+        {% if cat.slug %}
+        <a href="{% url 'onlineshopfront:product_list_by_category' cat.slug %}">{{ cat.category_name }}</a>
+        {% else %}
+        <a href="#">{{ cat.category_name }}</a>
+        {% endif %}
+        {% endfor %}
     </div>
 
     <div class="page-container">

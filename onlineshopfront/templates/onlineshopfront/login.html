@@ -1,0 +1,23 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+<div style="max-width:520px;margin:40px auto;padding:28px;background:#fff;border-radius:4px;text-align:center">
+    <h2>Sign in to AuroraMart</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-bottom:8px">
+            <input name="email" placeholder="Email" style="width:100%;padding:8px" />
+        </div>
+        <div style="margin-bottom:8px">
+            <input name="password" type="password" placeholder="Password" style="width:100%;padding:8px" />
+        </div>
+        <div style="text-align:center;margin-top:14px">
+            <button type="submit"
+                style="background:#8e2de2;color:white;border:none;padding:10px 28px;border-radius:20px">Sign in</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
