@@ -1,0 +1,45 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+
+{% block content %}
+<h2>Order Details</h2>
+
+{% if error %}
+<p>{{ error }}</p>
+<p><a href="{% url 'onlineshopfront:myOrder' %}">Back to orders</a></p>
+{% else %}
+<div class="order-meta">
+    <p>Order #: {{ order.order_id }}</p>
+    <p>Date: {{ order.order_date }}</p>
+    <p>Status: {{ order.order_status }}</p>
+</div>
+
+<table class="order-items">
+    <thead>
+        <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for it in items %}
+        <tr>
+            <td>{{ it.sku }}</td>
+            <td>{{ it.name }}</td>
+            <td>{{ it.quantity }}</td>
+            <td>${{ it.unit_price }}</td>
+            <td>${{ it.subtotal }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p><strong>Total: ${{ total }}</strong></p>
+<p><a href="{% url 'onlineshopfront:myOrder' %}">Back to orders</a></p>
+{% endif %}
+
+{% endblock %}

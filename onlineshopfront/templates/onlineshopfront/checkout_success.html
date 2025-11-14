@@ -1,0 +1,43 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block title %}Order placed{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:20px auto;padding:20px;background:#fff;border-radius:8px">
+    <h2 style="margin-top:0">Thank you — your order has been placed</h2>
+    <p>Order #: <strong>{{ order.order_id }}</strong></p>
+    <p>Status: {{ order.order_status }}</p>
+    <p>Order date: {{ order.order_date }}</p>
+    <h3 style="margin-top:16px">Items</h3>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:8px">Product</th>
+                <th style="padding:8px">Price</th>
+                <th style="padding:8px">Qty</th>
+                <th style="padding:8px">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in order.order_items.all %}
+            <tr>
+                <td style="padding:8px">{{ it.product.product_name }}<div style="color:#666;font-size:12px">SKU: {{
+                        it.product.sku }}</div>
+                </td>
+                <td style="padding:8px;text-align:center">${{ it.unit_price }}</td>
+                <td style="padding:8px;text-align:center">{{ it.quantity }}</td>
+                <td style="padding:8px;text-align:center">${{ it.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:18px">
+        <div style="font-size:18px;font-weight:700">Total: ${{ order.order_price|floatformat:2 }}</div>
+    </div>
+
+    <p style="margin-top:18px">A confirmation has been recorded. You can view your orders on your <a
+            href="{% url 'onlineshopfront:myOrder' %}">orders page</a>.</p>
+</div>
+{% endblock %}

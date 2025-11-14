@@ -41,14 +41,7 @@
         </div>
     </div>
 
-    {% comment %} Flash messages are positioned inside the header so they don't add layout spacing below it {% endcomment %}
-    {% if messages %}
-    <div class="flash-messages">
-        {% for message in messages %}
-        <div class="message {{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
+    {# flash messages removed as requested (no site-wide notifications) #}
 
     <div class="category-nav">
         {% for cat in site_categories %}
@@ -69,6 +62,9 @@
         </div>
 
         <main class="content">
+            {# Render notifications inside the main content area so they center within the page content #}
+            {% include 'onlineshopfront/_notifications.html' %}
+
             {% block content %}
             {% endblock %}
         </main>

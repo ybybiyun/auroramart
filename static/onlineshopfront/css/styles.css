@@ -1,0 +1,473 @@
+/* === General Body & Layout === */
+body {
+   font-family: Arial, sans-serif;
+   background-color: white;
+   color: #222; /* use dark text on white background */
+   margin: 0;
+}
+
+
+/* This new container helps create the sidebar/content split */
+.page-container {
+   display: flex;
+}
+
+
+/* === Header (Top Gradient Bar) === */
+/* AFTER */
+.header {
+   /* New gradient to match the blue-to-purple look */
+   background: linear-gradient(to right, #00c6ff, #0072ff, #8e2de2);
+   color: white;
+   padding: 0; /* Padding will be handled by the rows inside */
+   display: flex;
+   flex-direction: column; /* Stacks the top row and nav row */
+   align-items: stretch; /* Makes children full-width */
+   font-size: 1.5rem;
+   /* height: 178px;  <-- REMOVED. Let content define height. */
+   position: relative;
+}
+
+
+
+
+.logo-img {
+   width: 56px; /* constrain logo to a reasonable header size */
+   height: auto;
+   display: block;
+}
+
+
+/* === Header search form === */
+.search-form {
+   flex: 1 1 480px;
+   max-width: 720px;
+   margin: 0 18px;
+   display: flex;
+   align-items: center;
+}
+
+
+.header .search-form {
+   display: none;
+}
+
+
+.search-form input[type="search"] {
+   flex: 1;
+   padding: 10px 14px;
+   border-radius: 28px;
+   border: none;
+   font-size: 14px;
+   background: white;
+   color: #222;
+   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+
+/* Flash messages (small, unobtrusive) */
+.flash-messages {
+   max-width: 1100px;
+   margin: 0;
+   padding: 0 16px;
+   display: flex;
+   justify-content: center;
+   pointer-events: none;
+   /* allow clicks through when positioned */
+}
+
+
+/* When flash messages are rendered inside the header we float them over the
+  page content so they do not increase layout height or create a white gap. */
+.header .flash-messages {
+   position: absolute;
+   left: 50%;
+   transform: translateX(-50%);
+   bottom: -20px;
+   z-index: 1200;
+   width: auto;
+   pointer-events: none;
+}
+
+
+.flash-messages .message {
+   pointer-events: auto;
+   background: rgba(255, 255, 255, 0.96);
+   color: #222;
+   padding: 8px 12px;
+   border-radius: 8px;
+   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+   margin: 4px;
+   font-size: 14px;
+}
+
+
+.flash-messages .message.success {
+   border-left: 4px solid #2ecc71;
+}
+
+
+.flash-messages .message.error {
+   border-left: 4px solid #e74c3c;
+}
+
+
+.search-form button {
+   margin-left: 8px;
+   padding: 8px 12px;
+   border-radius: 20px;
+   border: none;
+   background: white;
+   color: #8e2de2;
+   font-weight: 600;
+   cursor: pointer;
+   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+
+/* Ensure header items align nicely on smaller screens */
+@media (max-width: 880px) {
+   .search-form {
+       display: none;
+   }
+
+
+   .logo-img {
+      width: 56px;
+   }
+
+
+   .header {
+       height: 140px;
+   }
+}
+
+
+/* === Category Navigation (Below Header) === */
+/* AFTER */
+.category-nav {
+   display: flex;
+   justify-content: center; /* Center the links */
+   padding: 10px 20px;
+   overflow-x: auto;
+}
+
+
+/* AFTER */
+.category-nav a {
+   color: white;
+   margin: 0 15px;
+   text-decoration: underline; /* Add underline */
+   font-size: 16px; /* Make text slightly smaller */
+   font-weight: normal; /* Remove bold */
+   white-space: nowrap;
+}
+
+
+.category-nav a:hover {
+   text-decoration: underline;
+}
+
+
+/* === Cart Icon === */
+.cart {
+   position: relative;
+   font-size: 44px;
+   /* Larger icon */
+   color: white;
+}
+
+
+.cart-count {
+   position: absolute;
+   top: -10px;
+   right: -18px;
+   background: red;
+   color: white;
+   font-size: 12px;
+   font-weight: bold;
+   border-radius: 50%;
+   padding: 3px 6px;
+   border: 1px solid white;
+}
+
+
+/* increase clickable area for cart link */
+.cart-link {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   padding: 6px;
+}
+
+
+/* Container for cart and auth links in header */
+.cart-and-auth {
+   display: flex;
+   align-items: center;
+   gap: 12px;
+}
+
+
+.auth-links {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+}
+
+
+/* AFTER */
+.auth-link {
+   color: white;
+   text-decoration: underline;
+   font-size: 14px;
+   padding: 6px 10px;
+   border-radius: 6px;
+   background: none; /* Remove background */
+}
+
+
+.auth-link:hover {
+   text-decoration: underline;
+}
+
+
+.user-greet {
+   color: white;
+   font-size: 14px;
+   margin-right: 6px;
+}
+
+
+/* === Sidebar (Left) === */
+.sidebar {
+   width: 180px;
+   /* A bit wider */
+   padding: 20px;
+   flex-shrink: 0;
+   /* Prevents sidebar from shrinking */
+   background-color: white;
+}
+
+
+.sidebar h3 {
+   color: white;
+   border-bottom: 1px solid #555;
+   padding-bottom: 10px;
+}
+
+
+.sidebar a {
+   display: block;
+   margin-bottom: 10px;
+   color: #ccc;
+   /* Light grey text for dark background */
+   text-decoration: none;
+   font-size: 16px;
+   color: black;
+}
+
+
+.sidebar a:hover {
+   color: grey;
+   text-decoration: underline;
+}
+
+
+/* === Main Content (Right, White Area) === */
+.content {
+   flex-grow: 1;
+   /* Takes up remaining space */
+   padding: 30px;
+   background: white;
+   color: #333;
+   /* Dark text for white background */
+   min-height: 100vh;
+   border-top-left-radius: 15px;
+   /* Curved corner as seen in image */
+}
+
+
+/* === Search Bar === */
+.content h2 {
+   font-size: 24px;
+   font-weight: 300;
+   /* Lighter "Search" text */
+   margin-top: 0;
+}
+
+
+.search-bar {
+   margin-bottom: 30px;
+}
+
+
+.search-bar input {
+   width: 90%;
+   max-width: 600px;
+   padding: 12px 20px;
+   border: 1px solid #ccc;
+   border-radius: 30px;
+   /* Fully rounded ends */
+   font-size: 16px;
+}
+
+
+/* === Product Grid === */
+.products {
+   display: grid;
+   /* fallback grid used on homepage */
+   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+   gap: 25px;
+}
+
+
+/* product list page uses a 3-column layout like the design */
+.product-grid {
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
+   gap: 30px;
+   align-items: start;
+}
+
+
+.product-tile {
+   display: flex;
+   flex-direction: column;
+}
+
+
+.add-to-cart-btn {
+   background: #8e2de2;
+   color: white;
+   border: none;
+   cursor: pointer;
+}
+
+
+.product-card {
+   border: 1px solid #eaeaea;
+   border-radius: 8px;
+   padding: 18px 12px;
+   text-align: center;
+   background: #fff;
+   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+   transition: transform 180ms ease, box-shadow 180ms ease;
+   min-height: 260px;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+}
+
+
+.product-card:hover {
+   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+
+.product-card img {
+   max-width: 140px;
+   height: 140px;
+   object-fit: contain;
+   margin: 0 auto 14px auto;
+   display: block;
+}
+
+
+.product-title {
+   font-size: 14px;
+   color: #222;
+   margin-top: 8px;
+   font-weight: 600;
+}
+
+
+.product-sub {
+   font-size: 12px;
+   color: #666;
+   margin-top: 6px;
+}
+
+
+.product-price {
+   font-size: 15px;
+   font-weight: 700;
+   color: #111;
+   margin-top: 10px;
+}
+
+
+/* Hover / focus styles for clickable product links */
+.product-card-link:focus .product-card,
+.product-card-link:hover .product-card {
+   transform: translateY(-6px);
+   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+}
+
+
+.product-card-link:focus {
+   outline: 3px solid rgba(0, 123, 255, 0.25);
+   outline-offset: 4px;
+}
+
+
+.profile-info {
+   margin-left: 0;
+   margin-top: 12px;
+   font-size: 14px;
+   color: #333;
+}
+
+/* Profile card stacked variant (used on My Profile page) */
+.profile-card.profile-card--stacked {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 12px;
+   max-width: 480px;
+   margin: 6px auto 24px auto;
+   padding: 18px;
+   background: #fff;
+   border-radius: 10px;
+   box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.profile-avatar {
+   width: 80px;
+   height: 80px;
+   border-radius: 999px;
+   overflow: hidden;
+   background: #eef0f2;
+   display: block;
+}
+
+.profile-avatar img,
+.profile-avatar svg {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+   display: block;
+}
+
+.profile-info h3 {
+   margin: 0;
+   font-size: 18px;
+}
+
+.profile-actions {
+   margin-top: 8px;
+}
+
+
+/* Make the whole product card clickable when wrapped in an anchor */
+.product-card-link {
+   text-decoration: none;
+   color: inherit;
+   display: block;
+}
+
+
+.product-card-link .product-card {
+   height: 100%;
+}
+

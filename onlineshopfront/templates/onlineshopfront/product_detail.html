@@ -7,8 +7,6 @@
     <div style="display:flex;gap:18px;align-items:flex-start">
         <img src="{% static 'images/coke.png' %}" alt="{{ product.product_name }}" style="height:200px;">
         <div style="flex:1">
-            <div><strong>SKU:</strong> {{ product.sku }}</div>
-            <div><strong>Category:</strong> {{ product.product_category }}</div>
             <div style="font-size:20px;font-weight:700;margin-top:8px">${{ product.unit_price }}</div>
             <div style="color:#666;margin-top:8px">Rating: {{ product.product_rating }}</div>
             <div style="color:#666;margin-top:8px">Stock: {{ product.quantity_on_hand }}</div>
@@ -22,6 +20,18 @@
                     style="background:#8e2de2;color:white;border:none;padding:8px 14px;border-radius:8px;margin-left:12px">Add
                     to cart</button>
             </form>
+
+            {# server-side in-card notification for non-JS clients #}
+            {% if in_card_notif and in_card_notif.sku|stringformat:"s" == product.pk|stringformat:"s" %}
+            <div class="notification in-card-notif success pop" role="status" style="position:relative;margin-top:12px">
+                <div class="notif-icon">✓</div>
+                <div class="notif-body">
+                    <div class="notif-title">Added to cart</div>
+                    <div class="notif-sub">{{ in_card_notif.text }}</div>
+                </div>
+                <button type="button" class="notif-close" aria-label="Close">✕</button>
+            </div>
+            {% endif %}
 
             <p style="margin-top:12px"><a href="{% url 'onlineshopfront:product_list' %}">Back to products</a></p>
         </div>

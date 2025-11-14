@@ -1,0 +1,51 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:20px auto;padding:20px;background:#fff;border-radius:8px">
+    <h2 style="margin-top:0">Checkout</h2>
+
+    {% if not items %}
+    <p>Your cart is empty. <a href="{% url 'onlineshopfront:product_list' %}">Continue shopping</a></p>
+    {% else %}
+
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:8px">Product</th>
+                <th style="padding:8px">Price</th>
+                <th style="padding:8px">Qty</th>
+                <th style="padding:8px">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in items %}
+            <tr>
+                <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku }}</div>
+                </td>
+                <td style="padding:8px;text-align:center">${{ it.price }}</td>
+                <td style="padding:8px;text-align:center">{{ it.quantity }}</td>
+                <td style="padding:8px;text-align:center">${{ it.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
+        <div></div>
+        <div style="font-size:18px;font-weight:700">Total: ${{ total|floatformat:2 }}</div>
+    </div>
+
+    <form method="post" action="{% url 'onlineshopfront:checkout' %}" style="margin-top:18px">
+        {% csrf_token %}
+        <button type="submit"
+            style="background:#0b7a3a;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:700">Place
+            order</button>
+        <a href="{% url 'onlineshopfront:view_cart' %}" style="margin-left:12px">Edit cart</a>
+    </form>
+
+    {% endif %}
+</div>
+{% endblock %}
