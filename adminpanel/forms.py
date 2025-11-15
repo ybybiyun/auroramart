@@ -1,4 +1,3 @@
-# ...existing code...
 from django import forms
 from onlineshopfront.models import Product, Category, SubCategory
 from django.contrib.auth.models import User, Group
@@ -16,13 +15,38 @@ class BulkProductUploadForm(forms.Form):
     file = forms.FileField(help_text="CSV file (UTF-8)")
     update_existing = forms.BooleanField(required=False, initial=False, help_text="Update rows if SKU already exists.")
 
+class SubCategoryChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return f"{obj.category.category_name} — {obj.subcategory_name}"
+
+_HAS_CATEGORY_FIELD = any(f.name == 'category' for f in Product._meta.fields)
+
 class ProductForm(forms.ModelForm):
-     class Meta:
-         model = Product
-         fields = '__all__'
-         widgets = {
+    product_subcategory = SubCategoryChoiceField(queryset=SubCategory.objects.none(), empty_label="Select…")
+
+    class Meta:
+        model = Product
+        exclude = ['category'] if _HAS_CATEGORY_FIELD else []
+        widgets = {
             'product_description': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['product_subcategory'].queryset = (
+            SubCategory.objects.select_related('category')
+            .order_by('category__category_name', 'subcategory_name')
+        )
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # If the model has a separate 'category' FK, sync it from the chosen subcategory
+        if _HAS_CATEGORY_FIELD and instance.product_subcategory_id:
+            instance.category = instance.product_subcategory.category
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
          
 class CategoryForm(forms.ModelForm):
     class Meta:
