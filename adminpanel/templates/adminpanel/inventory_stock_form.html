@@ -1,0 +1,11 @@
+{% extends "adminpanel/base.html" %}
+{% block title %}Adjust Stock • AuroraMart Admin{% endblock %}
+{% block header_title %}Adjust Stock{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">{{ product.sku }} — {{ product.product_name }}</h2>
+<form method="post" style="max-width:420px;">{% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Save</button>
+  <a href="{% url 'adminpanel:inventory_list' %}" style="margin-left:8px;">Cancel</a>
+</form>
+{% endblock %}

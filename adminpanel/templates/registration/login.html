@@ -1,0 +1,24 @@
+{% extends "adminpanel/base_auth.html" %}
+{% block title %}Login • Aurora Admin{% endblock %}
+{% block header_title %}Sign In{% endblock %}
+{% block sub_title %}Enter your staff credentials{% endblock %}
+{% block content %}
+{% if form.errors %}
+  <div class="error">Invalid username or password.</div>
+{% endif %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% for field in form.visible_fields %}
+  <div class="field-wrapper">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% for e in field.errors %}<div class="error" style="margin:0;">{{ e }}</div>{% endfor %}
+  </div>
+  {% endfor %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit" class="primary">Login</button>
+</form>
+<p style="margin-top:18px; font-size:13px; text-align:center;">
+  Need access? Contact a Manager or Administrator.
+</p>
+{% endblock %}

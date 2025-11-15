@@ -64,10 +64,15 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'onlineshopfront.context_processors.site_categories',
+                'adminpanel.context_processors.role_flags',
+                
             ],
         },
     },
 ]
+LOGIN_URL = 'adminpanel:login'
+LOGIN_REDIRECT_URL = 'adminpanel:adminpanel'
+LOGOUT_REDIRECT_URL = 'adminpanel:login'
 
 WSGI_APPLICATION = 'auroramartproj.wsgi.application'
 
@@ -119,7 +124,7 @@ USE_TZ = True
 
 # Use a leading slash and make the project-level `static/` dir available during
 # development so files under /auroramartproj/static/ are served by runserver.
-STATIC_URL = '/static/'
+STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / "onlineshopfront" / "static",
 ]
