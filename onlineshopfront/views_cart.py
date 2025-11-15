@@ -93,7 +93,7 @@ def view_cart(request):
             if cart:
                 for ci in cart.items.select_related('product').all():
                     subtotal = ci.quantity * ci.product.unit_price
-                    items.append({'sku': ci.product.sku, 'name': ci.product.product_name, 'price': ci.product.unit_price, 'quantity': ci.quantity, 'subtotal': subtotal})
+                    items.append({'sku': ci.product.sku, 'name': ci.product.product_name, 'price': ci.product.unit_price, 'quantity': ci.quantity, 'subtotal': subtotal, 'product': ci.product})
                     total += subtotal
         except Exception:
             items = []
@@ -103,45 +103,33 @@ def view_cart(request):
             try:
                 p = Product.objects.get(pk=sku)
                 subtotal = int(qty) * p.unit_price
-                items.append({'sku': p.sku, 'name': p.product_name, 'price': p.unit_price, 'quantity': int(qty), 'subtotal': subtotal})
+                items.append({'sku': p.sku, 'name': p.product_name, 'price': p.unit_price, 'quantity': int(qty), 'subtotal': subtotal, 'product': p})
                 total += subtotal
             except Product.DoesNotExist:
                 continue
 
-    # pop any inline cart notice from session
-    notice = None
-    try:
-        notice = request.session.pop('cart_notice', None)
-    except Exception:
-        notice = None
+    notice = request.session.pop('cart_notice', None)
 
-    # --- AI RECOMMENDATION ---
+    # --- AI RECOMMENDATION (FIXED) ---
     recommended_products = []
     try:
-        # 1. Get all product SKUs from the cart
         cart_skus = [item['sku'] for item in items]
-
         if cart_skus:
-            # 2. Call the recommendation function from recommender.py
-            # Get 3 recommendations
-            recommended_skus = recommender.get_recommendations(cart_skus, top_n=3)
+            # FIXED: Correct function name
+            recommended_skus = recommender.get_associated_products(cart_skus)
             
-            # 3. Get the actual Product objects from the database
             if recommended_skus:
-                # Exclude items already in the cart from the recommendations
-                recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(sku__in=cart_skus)
+                # Get the Product objects and limit to 4
+                recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(sku__in=cart_skus)[:4]
     except Exception as e:
-        print(f"Recommendation failed: {e}")
-        # Fail silently, the page will just not show recommendations
+        print(f"Recommendation failed in cart: {e}")
     # --- END AI RECOMMENDATION ---
 
-
-    # Add the recommendations to the context
     context = {
         'items': items,
         'total': total,
         'cart_notice': notice,
-        'recommended_products': recommended_products  # <-- Add this
+        'recommended_products': recommended_products
     }
     return render(request, 'onlineshopfront/cart.html', context)
 
@@ -207,7 +195,6 @@ def checkout(request):
     POST will create an Order from the user's cart and clear it, then redirect to success.
     """
     if request.method == 'GET':
-        # reuse view_cart logic to gather items and total
         items = []
         total = 0.0
         if request.user.is_authenticated:
@@ -217,15 +204,13 @@ def checkout(request):
                 if cart:
                     for ci in cart.items.select_related('product').all():
                         subtotal = ci.quantity * ci.product.unit_price
-                        items.append({'sku': ci.product.sku, 'name': ci.product.product_name, 'price': ci.product.unit_price, 'quantity': ci.quantity, 'subtotal': subtotal})
+                        items.append({'sku': ci.product.sku, 'name': ci.product.product_name, 'price': ci.product.unit_price, 'quantity': ci.quantity, 'subtotal': subtotal, 'product': ci.product})
                         total += subtotal
             except Exception:
                 items = []
         else:
-            # redirect anonymous users to login first
             return redirect(f"{reverse('onlineshopfront:login')}?next={reverse('onlineshopfront:checkout')}")
 
-        # prefill address from customer profile when available
         initial = {}
         try:
             if request.user.is_authenticated:
@@ -237,9 +222,26 @@ def checkout(request):
         except Exception:
             pass
 
-        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'initial': initial})
+        # --- AI RECOMMENDATION (FIXED) ---
+        recommended_products = []
+        try:
+            cart_skus = [item['sku'] for item in items]
+            if cart_skus:
+                recommended_skus = recommender.get_associated_products(cart_skus)
+                if recommended_skus:
+                    recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(sku__in=cart_skus)[:4]
+        except Exception as e:
+            print(f"Recommendation failed in checkout: {e}")
+        # --- END AI RECOMMENDATION ---
 
-    # POST -> place order
+        return render(request, 'onlineshopfront/checkout.html', {
+            'items': items, 
+            'total': total, 
+            'initial': initial,
+            'recommended_products': recommended_products  # <-- Added this
+        })
+
+    # ... your POST logic (no changes needed) ...
     if not request.user.is_authenticated:
         return redirect(f"{reverse('onlineshopfront:login')}?next={reverse('onlineshopfront:checkout')}")
 
@@ -256,7 +258,8 @@ def checkout(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('onlineshopfront:view_cart')
 
-    # validate form fields
+    # ... (rest of your POST logic) ...
+    # ... (no changes needed here) ...
     data = request.POST
     errors = {}
     address = (data.get('address') or '').strip()
@@ -273,7 +276,6 @@ def checkout(request):
     if payment_method not in ('Card', 'Paynow', 'Apple Pay'):
         errors['payment_method'] = 'Please select a payment method.'
 
-    # if card payment, validate card fields (basic checks only)
     if payment_method == 'Card':
         card_number = (data.get('card_number') or '').replace(' ', '')
         card_exp_month = (data.get('card_exp_month') or '').strip()
@@ -292,7 +294,6 @@ def checkout(request):
         if not (card_cvv.isdigit() and len(card_cvv) in (3, 4)):
             errors['card_cvv'] = 'Invalid CVV.'
 
-    # If there are validation errors, re-render the checkout page with errors and previous input
     if errors:
         items = []
         total = 0.0
@@ -303,19 +304,29 @@ def checkout(request):
                 total += subtotal
         except Exception:
             items = []
+        
+        # --- RE-ADD RECOMMENDATIONS ON ERROR ---
+        recommended_products = []
+        try:
+            cart_skus = [item['sku'] for item in items]
+            if cart_skus:
+                recommended_skus = recommender.get_associated_products(cart_skus)
+                if recommended_skus:
+                    recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(sku__in=cart_skus)[:4]
+        except Exception:
+            pass # Fail silently
+        # --- END ---
+
         form_values = {
             'address': address,
             'postal_code': postal_code,
             'phone': phone,
             'payment_method': payment_method,
         }
-        # pass card fields back except sensitive ones (do not echo CVV)
         form_values['card_number'] = data.get('card_number', '')
         form_values['card_exp_month'] = data.get('card_exp_month', '')
         form_values['card_exp_year'] = data.get('card_exp_year', '')
 
-        # include initial values (as in GET path) so template lookups like
-        # initial.address won't blow up if the view doesn't pass `initial`.
         initial = {}
         try:
             cust = getattr(request.user, 'customer_profile', None)
@@ -326,42 +337,40 @@ def checkout(request):
         except Exception:
             pass
 
-        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'errors': errors, 'form': form_values, 'initial': initial})
+        return render(request, 'onlineshopfront/checkout.html', {
+            'items': items, 
+            'total': total, 
+            'errors': errors, 
+            'form': form_values, 
+            'initial': initial,
+            'recommended_products': recommended_products # <-- Added this
+        })
 
     # create order
     order = Order.objects.create(order_status='Order Placed', order_date=timezone.now().date(), order_price=0.0, required_date=timezone.now().date(), shipping_fee=0.0, customer=cust)
 
-    # If the POST contained a list of selected SKUs, only create order items for those SKUs
     selected = request.POST.getlist('selected') if request.method == 'POST' else []
     if selected:
-        # authenticated path: pull quantities from CartItems
         created_any = False
         for ci in cart.items.select_related('product').all():
             if str(ci.product.sku) in selected:
                 OrderItem.objects.create(order=order, product=ci.product, quantity=ci.quantity, unit_price=ci.product.unit_price)
-                # remove this cart item after ordering
                 ci.delete()
                 created_any = True
         if not created_any:
-            # nothing matched; delete the empty order and show message
             order.delete()
             messages.error(request, 'No selected items were found in your cart.')
             return redirect('onlineshopfront:view_cart')
     else:
-        # create items for all cart items (previous full-cart behavior)
         for ci in cart.items.select_related('product').all():
             OrderItem.objects.create(order=order, product=ci.product, quantity=ci.quantity, unit_price=ci.product.unit_price)
-        # clear all cart items
         cart.items.all().delete()
 
-    # After creating the order items, update the order total so the success page shows correct total
     try:
         order.update_order_total()
     except Exception:
-        # If update fails, continue — the order still exists
         pass
 
-    # clear guest session cart just in case (also remove selected skus from guest cart if provided)
     try:
         if request.session.get('cart'):
             if selected:
@@ -376,14 +385,12 @@ def checkout(request):
     except Exception:
         pass
 
-    # friendly flash message and redirect to success page
     try:
         messages.success(request, 'Order placed successfully.')
     except Exception:
         pass
     return redirect('onlineshopfront:checkout_success', order_id=order.order_id)
-
-
+    
 def checkout_success(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
     return render(request, 'onlineshopfront/checkout_success.html', {'order': order})

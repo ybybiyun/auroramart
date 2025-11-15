@@ -1,87 +1,125 @@
-# onlineshopfront/recommender.py
-
 import joblib
 import os
 import pandas as pd
 from django.apps import apps
 
-# --- 1. LOAD MODELS (as per professor's instructions) ---
+# --- Global variables to hold the loaded models (Lazy Loading) ---
+CLASSIFIER_MODEL = None
+CLASSIFIER_FEATURE_NAMES = None  # To store the model's required feature order
+ASSOCIATION_RULES_DF = None      # To store the rules DataFrame
 
-# Get the path to the 'onlineshopfront' app
-app_path = apps.get_app_config('onlineshopfront').path
+def get_model_path(model_name):
+    """
+    Constructs the absolute path to a model file in the 'mlmodels' folder.
+    """
+    app_path = apps.get_app_config('onlineshopfront').path
+    return os.path.join(app_path, 'mlmodels', model_name)
 
-# Load Decision Tree Classifier
-model_path_classifier = os.path.join(app_path, 'mlmodels', 'b2c_customers_100.joblib')
-classifier_model = joblib.load(model_path_classifier)
+# --- MODEL 1: DECISION TREE CLASSIFIER ---
 
-# Load Association Rules
-model_path_rules = os.path.join(app_path, 'mlmodels', 'b2c_products_500_transactions_50k.joblib')
-association_rules = joblib.load(model_path_rules)
-
-
-# --- 2. PREDICTION FUNCTION 1 (from predict_classifier.ipynb) ---
+def get_classifier():
+    """
+    Lazily loads the Decision Tree Classifier model AND its feature order.
+    """
+    global CLASSIFIER_MODEL, CLASSIFIER_FEATURE_NAMES
+    
+    if CLASSIFIER_MODEL is None:
+        print("Loading Decision Tree Classifier for the first time...")
+        try:
+            model_path = get_model_path('b2c_customers_100.joblib')
+            CLASSIFIER_MODEL = joblib.load(model_path)
+            
+            # Read the feature names and their exact order from the model
+            if hasattr(CLASSIFIER_MODEL, 'feature_names_in_'):
+                CLASSIFIER_FEATURE_NAMES = CLASSIFIER_MODEL.feature_names_in_
+                print("Successfully loaded model and feature names.")
+            else:
+                print("CRITICAL ERROR: Model file does not contain 'feature_names_in_'.")
+            
+        except FileNotFoundError:
+            print(f"ERROR: Classifier file not found at {model_path}")
+            
+    return CLASSIFIER_MODEL
 
 def predict_preferred_category(customer_data):
     """
-    Predicts the preferred category for a new customer.
-    customer_data should be a dict, e.g.:
-    {
-        'age': 29, 'household_size': 2, 'has_children': 1, 'monthly_income_sgd': 5000,
-        'gender': 'Female', 'employment_status': 'Full-time',
-        'occupation': 'Sales', 'education': 'Bachelor'
-    }
+    Predicts a new customer's preferred category based on their profile.
+    'customer_data' should be a dictionary.
     """
-    columns = {
-        'age':'int64', 'household_size':'int64', 'has_children':'int64', 'monthly_income_sgd':'float64',
-        'gender_Female':'bool', 'gender_Male':'bool', 'employment_status_Full-time':'bool',
-        'employment_status_Part-time':'bool', 'employment_status_Retired':'bool',
-        'employment_status_Self-employed':'bool', 'employment_status_Student':'bool',
-        'occupation_Admin':'bool', 'occupation_Education':'bool', 'occupation_Sales':'bool',
-        'occupation_Service':'bool', 'occupation_Skilled Trades':'bool', 'occupation_Tech':'bool',
-        'education_Bachelor':'bool', 'education_Diploma':'bool', 'education_Doctorate':'bool',
-        'education_Master':'bool', 'education_Secondary':'bool'
-    }
+    classifier = get_classifier()
+    
+    if classifier is None or CLASSIFIER_FEATURE_NAMES is None: 
+        print("Classifier or feature names not loaded. Aborting prediction.")
+        return None
 
-    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in columns.items()})
-    customer_df = pd.DataFrame([customer_data])
-    customer_encoded = pd.get_dummies(customer_df, columns=['gender', 'employment_status', 'occupation', 'education'])    
+    try:
+        # 1. Create a DataFrame from the single row of data
+        input_df = pd.DataFrame([customer_data])
 
-    for col in df.columns:
-        if col not in customer_encoded.columns:
-            if df[col].dtype == bool:
-                df[col] = False
-            else:
-                df[col] = 0
-        else:
-            df[col] = customer_encoded[col]
+        # 2. Define the categorical prefixes from your form
+        categorical_prefixes = ['gender', 'employment_status', 'occupation', 'education']
+        
+        # 3. Create the one-hot encoded columns
+        encoded_df = pd.get_dummies(input_df, prefix=categorical_prefixes)
+        
+        # 4. Reindex to match the model's exact feature order
+        final_df = encoded_df.reindex(columns=CLASSIFIER_FEATURE_NAMES, fill_value=0)
+        
+        # 5. Predict using the perfectly formatted DataFrame
+        prediction = classifier.predict(final_df)
+        
+        return prediction[0]
+        
+    except Exception as e:
+        print(f"Error during category prediction: {e}")
+        return None
 
-    # Get the prediction
-    prediction = classifier_model.predict(df)    
+# --- MODEL 2: ASSOCIATION RULES ---
 
-    # Return the first item, e.g., "Beauty & Personal Care"
-    return prediction[0]
-
-
-# --- 3. PREDICTION FUNCTION 2 (from predict_associationrules.ipynb) ---
-
-def get_recommendations(items, metric='confidence', top_n=3):
+def get_rules():
     """
-    Gets product recommendations based on a list of items (SKUs) in the cart.
-    e.g., items = ['AIA-JM4T8BP6', 'AEA-BMAE38SR']
+    Lazily loads the Association Rules DataFrame.
     """
+    global ASSOCIATION_RULES_DF
+    if ASSOCIATION_RULES_DF is None:
+        print("Loading Association Rules for the first time...")
+        try:
+            model_path = get_model_path('b2c_products_500_transactions_50k.joblib')
+            # The .joblib file is a pandas DataFrame
+            ASSOCIATION_RULES_DF = joblib.load(model_path)
+            print("Successfully loaded association rules DataFrame.")
+        except FileNotFoundError:
+            print(f"ERROR: Association rules file not found at {model_path}")
+            
+    return ASSOCIATION_RULES_DF
+
+def get_associated_products(sku_list, metric='confidence', top_n=4):
+    """
+    Finds product SKUs frequently bought with items in the cart.
+    This logic is taken directly from your notebook.
+    """
+    loaded_rules = get_rules()
+    if loaded_rules is None or loaded_rules.empty:
+        return []
+
     recommendations = set()
+    
+    try:
+        for item_sku in sku_list:
+            # Find rules where the item_sku is in the 'antecedents' (which is a frozenset)
+            matched_rules = loaded_rules[loaded_rules['antecedents'].apply(lambda x: item_sku in x)]
+            
+            # Sort by the metric (e.g., 'confidence' or 'lift')
+            top_rules = matched_rules.sort_values(by=metric, ascending=False).head(top_n)
+            
+            for _, row in top_rules.iterrows():
+                recommendations.update(row['consequents'])
+                
+    except Exception as e:
+        print(f"Error processing association rules: {e}")
+        return []
 
-    for item in items:
-        # Find rules where the item is in the antecedents
-        matched_rules = association_rules[association_rules['antecedents'].apply(lambda x: item in x)]
-        # Sort by the specified metric
-        top_rules = matched_rules.sort_values(by=metric, ascending=False).head(top_n)
-
-        for _, row in top_rules.iterrows():
-            recommendations.update(row['consequents'])
-
-    # Remove items that are already in the input list
-    recommendations.difference_update(items)
-
-    # Return a list of SKUs
+    # Remove items that are already in the cart
+    recommendations.difference_update(sku_list)
+    
     return list(recommendations)[:top_n]
