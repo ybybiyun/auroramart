@@ -1,0 +1,16 @@
+{% extends "adminpanel/base.html" %}
+{% block title %}Edit Staff • AuroraMart Admin{% endblock %}
+{% block header_title %}Edit Staff Roles{% endblock %}
+{% block content %}
+<h2 style="margin-top:0;">{{ staff_user.username }}</h2>
+<form method="post" style="max-width:520px;">{% csrf_token %}
+  <div style="display:grid; gap:14px;">
+    {{ form.first_name.label_tag }} {{ form.first_name }}
+    {{ form.last_name.label_tag }} {{ form.last_name }}
+    {{ form.email.label_tag }} {{ form.email }}
+    {{ form.role.label_tag }} {{ form.role }}
+  </div>
+  <button type="submit" style="margin-top:18px; padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Save</button>
+  <a href="{% url 'adminpanel:staff_list' %}" style="margin-left:8px;">Back</a>
+</form>
+{% endblock %}
