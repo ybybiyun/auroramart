@@ -1,9 +1,19 @@
-<!doctype html>
-<html><body>
-<h1>Edit Category</h1>
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <button>Save</button>
-  <a href="{% url 'adminpanel:catalogue_list' %}">Back</a>
+{% extends "adminpanel/base.html" %}
+{% block title %}Add New Category • AuroraMart Admin{% endblock %}
+{% block header_title %}Add New Category{% endblock %}
+{% block content %}
+<form method="post" style="max-width:520px;">{% csrf_token %}
+  {% if form.non_field_errors %}
+    <div style="color:#b00020; margin-bottom:8px;">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <p>
+    {{ form.category_name.label_tag }}<br>
+    {{ form.category_name }}
+    {% if form.category_name.errors %}
+      <br><span style="color:#b00020; font-size:12px;">{{ form.category_name.errors|striptags }}</span>
+    {% endif %}
+  </p>
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Save</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}" style="margin-left:8px;">Back</a>
 </form>
-</body></html>
+{% endblock %}

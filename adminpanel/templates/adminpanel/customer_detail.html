@@ -1,39 +1,48 @@
-<!doctype html>
-<html>
-<head><title>Customer {{ customer.id }}</title></head>
-<body>
-<h1>Customer Profile</h1>
-<p><strong>Name:</strong> {{ customer.first_name }} {{ customer.last_name }}</p>
-<p><strong>Email:</strong> {{ customer.email }}</p>
-<p><strong>Phone:</strong> {{ customer.phone }}</p>
-<p><strong>Address:</strong> {{ customer.address }}</p>
-<p><strong>Preferred Category:</strong> {{ customer.preferred_category }}</p>
-<p><strong>Total Orders:</strong> {{ total_orders }}</p>
-<p><strong>Total Spent:</strong> {{ total_spent }}</p>
+{% extends "adminpanel/base.html" %}
+{% block title %}Customer • AuroraMart Admin{% endblock %}
+{% block header_title %}Customer Profile{% endblock %}
+{% block content %}
+<a href="{% url 'adminpanel:customer_list' %}" style="font-size:12px;">← Back to Customers</a>
+<h2 style="margin:10px 0 4px;">{{ customer.first_name|default:"" }} {{ customer.last_name|default:"" }}</h2>
+<p><strong>Email:</strong> {{ customer.email|default:"—" }}</p>
+<p><strong>Phone:</strong> {{ customer.phone|default:"—" }}</p>
+<p><strong>Address:</strong> {{ customer.address|default:"—" }}</p>
+<p><strong>Preferred Category:</strong> {{ customer.preferred_category|default:"—" }}</p>
 <hr>
-<h2>Order History</h2>
-<table border="1" cellpadding="6">
-  <tr>
-    <th>Order ID</th><th>Status</th><th>Date</th><th>Total</th><th>Items</th>
-  </tr>
-  {% for o in orders %}
-  <tr>
-    <td>{{ o.order_id }}</td>
-    <td>{{ o.order_status }}</td>
-    <td>{{ o.order_date }}</td>
-    <td>{{ o.order_price }}</td>
-    <td>
-      <ul>
-        {% for item in o.order_items.all %}
-          <li>{{ item.product.sku }} ({{ item.quantity }})</li>
-        {% endfor %}
-      </ul>
-    </td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="5">No orders.</td></tr>
-  {% endfor %}
+<h3>Order History</h3>
+<p style="font-size:12px;color:#666;">Total orders: {{ total_orders }} • Total spent: {{ total_spent|floatformat:2 }}</p>
+<table>
+  <thead>
+    <tr><th>Order ID</th><th>Status</th><th>Date</th><th>Total</th><th>Items</th></tr>
+  </thead>
+  <tbody>
+    {% for o in orders %}
+      <tr>
+        <td>#{{ o.order_id }}</td>
+        <td>{{ o.order_status }}</td>
+        <td>{{ o.order_date }}</td>
+        <td>{{ o.order_price|floatformat:2 }}</td>
+        <td>
+          <ul style="margin:0; padding-left:16px;">
+            {% for item in o.order_items.all %}
+              <li>{{ item.product.sku }} ({{ item.quantity }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">No orders.</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
-<p><a href="{% url 'adminpanel:customer_list' %}">Back to customers</a></p>
-</body>
-</html>
+
+<div style="margin-top:10px;">
+  {% if orders.has_previous %}
+    <a href="?page={{ orders.previous_page_number }}">Prev</a>
+  {% endif %}
+  Page {{ orders.number }} of {{ orders.paginator.num_pages }}
+  {% if orders.has_next %}
+    <a href="?page={{ orders.next_page_number }}">Next</a>
+  {% endif %}
+</div>
+{% endblock %}

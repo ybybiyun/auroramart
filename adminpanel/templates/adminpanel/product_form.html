@@ -1,12 +1,10 @@
-<!doctype html>
-<html>
-<head><title>{% if product %}Edit{% else %}New{% endif %} Product</title></head>
-<body>
-<h1>{% if product %}Edit{% else %}Add{% endif %} Product</h1>
-<form method="post">{% csrf_token %}
+{% extends "adminpanel/base.html" %}
+{% block title %}{% if product %}Edit{% else %}New{% endif %} Product • Aurora Admin{% endblock %}
+{% block header_title %}{% if product %}Edit{% else %}Add{% endif %} Product{% endblock %}
+{% block content %}
+<form method="post" style="max-width:720px;">{% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Save</button>
-  <a href="{% url 'adminpanel:catalogue_list' %}">Cancel</a>
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Save</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}" style="margin-left:8px;">Cancel</a>
 </form>
-</body>
-</html>
+{% endblock %}

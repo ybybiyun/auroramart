@@ -1,34 +1,125 @@
-<!doctype html>
-<html>
-<head><title>Customers</title></head>
-<body>
-<h1>Customers</h1>
-<form method="get">
-  <input type="text" name="q" placeholder="Search name or email" value="{{ q }}">
-  <button type="submit">Search</button>
-  <a href="{% url 'adminpanel:adminpanel' %}">Dashboard</a>
+{% extends "adminpanel/base.html" %}
+{% block title %}Customers • AuroraMart Admin{% endblock %}
+{% block header_title %}Customers{% endblock %}
+{% block content %}
+<form method="get" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+  <details style="position:relative;">
+    <summary style="list-style:none; cursor:pointer; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:#fff;">
+      Filters
+    </summary>
+    <div style="position:absolute; z-index:10; background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:6px; min-width:520px; box-shadow:0 4px 16px rgba(0,0,0,.06);">
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(220px,1fr)); gap:10px;">
+        <label>Gender
+          <select name="gender" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in gender_opts %}
+              <option value="{{ v }}" {% if f_gender == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Employment Status
+          <select name="employment" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in employment_opts %}
+              <option value="{{ v }}" {% if f_employment == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Occupation
+          <select name="occupation" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in occupation_opts %}
+              <option value="{{ v }}" {% if f_occupation == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Education
+          <select name="education" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in education_opts %}
+              <option value="{{ v }}" {% if f_education == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Household Size
+          <select name="household_size" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in household_opts %}
+              <option value="{{ v }}" {% if f_household|add:'' == v|add:'' %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>Has Children
+          <select name="children" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            <option value="1" {% if f_children == '1' %}selected{% endif %}>Yes</option>
+            <option value="0" {% if f_children == '0' %}selected{% endif %}>No</option>
+          </select>
+        </label>
+
+        <label>Preferred Category
+          <select name="preferred_category" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
+            <option value="">Any</option>
+            {% for v in prefcat_opts %}
+              <option value="{{ v }}" {% if f_prefcat == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button type="submit" style="padding:6px 12px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Apply</button>
+        <a href="{% url 'adminpanel:customer_list' %}" style="padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:6px; text-decoration:none;">Reset</a>
+      </div>
+    </div>
+  </details>
 </form>
-<table border="1" cellpadding="6">
-  <tr>
-    <th>ID</th><th>Name</th><th>Email</th><th>Preferred Category</th><th>Orders</th><th>Actions</th>
-  </tr>
-  {% for c in customers %}
-  <tr>
-    <td>{{ c.id }}</td>
-    <td>{{ c.first_name }} {{ c.last_name }}</td>
-    <td>{{ c.email }}</td>
-    <td>{{ c.preferred_category }}</td>
-    <td>{{ c.customer_orders.count }}</td>
-    <td><a href="{% url 'adminpanel:customer_detail' c.id %}">View</a></td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="6">No customers found.</td></tr>
-  {% endfor %}
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Age</th>
+      <th>Gender</th>
+      <th>Employment Status</th>
+      <th>Occupation</th>
+      <th>Education</th>
+      <th>Household Size</th>
+      <th>Has Children</th>
+      <th>Monthly Income (SGD)</th>
+      <th>Preferred Category</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in customers %}
+      <tr>
+        <td>{{ c.id }}</td>
+        <td>{{ c.age|default:"—" }}</td>
+        <td>{{ c.gender|default:"—" }}</td>
+        <td>{{ c.employment_status|default:"—" }}</td>
+        <td>{{ c.occupation|default:"—" }}</td>
+        <td>{{ c.education|default:"—" }}</td>
+        <td>{{ c.household_size|default:"—" }}</td>
+        <td>{% if c.has_children %}Yes{% else %}No{% endif %}</td>
+        <td>{% if c.monthly_income is not None %}{{ c.monthly_income|floatformat:2 }}{% else %}—{% endif %}</td>
+        <td>{{ c.preferred_category|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9">No customers found.</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
-<div>
+
+<div style="margin-top:10px;">
   {% if customers.has_previous %}<a href="?page={{ customers.previous_page_number }}&q={{ q }}">Prev</a>{% endif %}
   Page {{ customers.number }} of {{ customers.paginator.num_pages }}
   {% if customers.has_next %}<a href="?page={{ customers.next_page_number }}&q={{ q }}">Next</a>{% endif %}
 </div>
-</body>
-</html>
+{% endblock %}
+
+
+
