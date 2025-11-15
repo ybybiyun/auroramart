@@ -1,66 +1,76 @@
-<!doctype html>
-<html>
-<head>
-  <title>Inventory Management</title>
-  <style>
-    .low { background:#ffe5e5; }
-    .ok { background:#e8ffe8; }
-    .blink { animation: blink 1s linear infinite; }
-    @keyframes blink { 50% { opacity:0.2; } }
-  </style>
-  <script>
-    // simple auto-refresh every 60s for near "real-time"
-    setTimeout(()=>location.reload(), 60000);
-  </script>
-</head>
-<body>
-<h1>Inventory Management</h1>
-
-<form method="get">
-  <input type="text" name="q" placeholder="Search SKU or name" value="{{ q }}">
-  <label>
-    <input type="checkbox" name="low" value="1" {% if show_low %}checked{% endif %}>
-    Show only low stock
+{% extends "adminpanel/base.html" %}
+{% block title %}Inventory • AuroraMart Admin{% endblock %}
+{% block header_title %}Inventory{% endblock %}
+{% block content %}
+<form method="get" id="inventoryFilter" style="margin-bottom:20px; display:flex; gap:14px; flex-wrap:wrap;">
+  <input type="text" name="q" placeholder="Search SKU or name" value="{{ q }}" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+  <select name="sort" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:140px;">
+    <option value="">Sort</option>
+    <option value="sku_asc" {% if sort == 'sku_asc' %}selected{% endif %}>SKU ↑</option>
+    <option value="sku_desc" {% if sort == 'sku_desc' %}selected{% endif %}>SKU ↓</option>
+    <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name A→Z</option>
+    <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name Z→A</option>
+  </select>
+  <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
+    <input type="checkbox" name="low" value="1" {% if show_low %}checked{% endif %}> Show only low stock
   </label>
-  <button type="submit">Filter</button>
-  <a href="{% url 'adminpanel:catalogue_list' %}">Back to Catalogue</a>
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Filter</button>
+  <button type="button" id="exportCsvBtn"
+          style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Export CSV
+  </button>
 </form>
 
-<table border="1" cellpadding="6">
-  <tr>
-    <th>SKU</th>
-    <th>Name</th>
-    <th>Qty On Hand</th>
-    <th>Reorder Qty</th>
-    <th>Status</th>
-    <th>Actions</th>
-  </tr>
-  {% for p in products %}
-  {% with is_low=low_map.p.sku %}
-  <tr class="{% if p.quantity_on_hand <= p.reorder_quantity %}low{% else %}ok{% endif %}">
-    <td>{{ p.sku }}</td>
-    <td>{{ p.product_name }}</td>
-    <td>{{ p.quantity_on_hand }}</td>
-    <td>{{ p.reorder_quantity }}</td>
-    <td>
-      {% if p.quantity_on_hand <= p.reorder_quantity %}
-        <span class="blink">LOW</span>
-      {% else %}OK{% endif %}
-    </td>
-    <td>
-      <a href="{% url 'adminpanel:inventory_update_stock' p.sku %}">Adjust Stock</a>
-    </td>
-  </tr>
-  {% endwith %}
-  {% empty %}
-  <tr><td colspan="6">No products.</td></tr>
-  {% endfor %}
+<table>
+  <thead>
+    <tr>
+      <th>SKU</th><th>Name</th><th>Qty On Hand</th><th>Reorder Qty</th><th>Status</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{{ p.sku }}</td>
+      <td>{{ p.product_name }}</td>
+      <td>{{ p.quantity_on_hand }}</td>
+      <td>{{ p.reorder_quantity }}</td>
+      <td>
+        {% if p.quantity_on_hand <= p.reorder_quantity %}
+          <span class="status-low">LOW</span>
+        {% else %}
+          <span class="status-ok">OK</span>
+        {% endif %}
+      </td>
+      <td><a href="{% url 'adminpanel:inventory_update_stock' p.sku %}">Adjust Stock</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">No products.</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
 
-<div>
+<div style="margin-top:10px;">
   {% if products.has_previous %}<a href="?page={{ products.previous_page_number }}&q={{ q }}{% if show_low %}&low=1{% endif %}">Prev</a>{% endif %}
   Page {{ products.number }} of {{ products.paginator.num_pages }}
   {% if products.has_next %}<a href="?page={{ products.next_page_number }}&q={{ q }}{% if show_low %}&low=1{% endif %}">Next</a>{% endif %}
 </div>
-</body>
-</html>
+{% endblock %}
+{% block extra_js %}
+<script>
+function buildQuery(form){
+  const fd = new FormData(form);
+  const qs = new URLSearchParams();
+  for(const [k,v] of fd.entries()){ if(v !== '') qs.append(k,v); }
+  return qs.toString();
+}
+const exportBtn = document.getElementById('exportCsvBtn');
+const form = document.getElementById('inventoryFilter');
+exportBtn.addEventListener('click', ()=>{
+  exportBtn.disabled = true;
+  exportBtn.textContent = 'Preparing CSV...';
+  const qs = buildQuery(form);
+  const url = "{% url 'adminpanel:inventory_export' %}" + (qs ? ('?'+qs) : '');
+  window.location.href = url;
+  setTimeout(()=>{ exportBtn.disabled = false; exportBtn.textContent = 'Export CSV'; }, 3000);
+});
+  </script>
+{% endblock %}

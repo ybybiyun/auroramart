@@ -1,33 +1,81 @@
+from asyncio.log import logger
 from django.utils import timezone
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from onlineshopfront.models import Product, Category, SubCategory, Customer, Order, OrderItem
-from django.db.models import Q, F
-from .forms import ProductForm, CategoryForm, StaffUserCreationForm, StockUpdateForm, SubCategoryForm
+from django.db.models import Q, F, Sum, FloatField, Exists, OuterRef
+from .forms import ProductForm, CategoryForm, StaffUserCreationForm, StockUpdateForm, SubCategoryForm, StaffUserRoleForm, BulkProductUploadForm
+from django.contrib.auth.models import User, Group
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .models import HiddenProduct
-from django.db.models import Sum, FloatField
 from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required, user_passes_test
+import csv, io
+from decimal import Decimal
+from django.db import transaction
+from django.contrib.auth import logout
+from django.http import HttpResponse
 
-# Create your views here.
+def logout_simple(request):
+    logout(request)
+    return redirect('adminpanel:login')
+
 def groups_required(*names):
     def check(u):
-        return u.is_authenticated and (u.is_superuser or u.groups.filter(name__in=names).exists())
+        if not u.is_authenticated:
+            return False
+        if u.is_superuser or u.groups.filter(name='Admin').exists():
+            return True
+        return u.groups.filter(name__in=names).exists()
     return user_passes_test(check)
 
 @user_passes_test(lambda u: u.is_superuser)
-def account_create(request):
+def staff_list(request):
+    q = request.GET.get('q', '').strip()
+    users = User.objects.filter(is_staff=True).order_by('username')
+    if q:
+        users = users.filter(
+            Q(username__icontains=q) |
+            Q(email__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q)
+        )
+    # Ensure required role groups exist (idempotent)
+    for name in ['Admin','Manager','Merchandiser','Inventory','Support']:
+        Group.objects.get_or_create(name=name)
+    paginator = Paginator(users, 25)
+    page = request.GET.get('page')
+    page_obj = paginator.get_page(page)
+    return render(request, 'adminpanel/staff_list.html', {
+        'users': page_obj,
+        'q': q,
+    })
+
+@user_passes_test(lambda u: u.is_superuser)
+def staff_create(request):
     if request.method == 'POST':
         form = StaffUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            messages.success(request, f"Staff account '{user.username}' created.")
-            return redirect('adminpanel:adminpanel')
+            messages.success(request, f"Staff '{user.username}' created.")
+            return redirect('adminpanel:staff_list')
     else:
         form = StaffUserCreationForm()
-    return render(request, 'adminpanel/account_create.html', {'form': form})
+    return render(request, 'adminpanel/staff_create.html', {'form': form})
+
+@user_passes_test(lambda u: u.is_superuser)
+def staff_edit(request, pk):
+    user = get_object_or_404(User, pk=pk, is_staff=True)
+    if request.method == 'POST':
+        form = StaffUserRoleForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Updated roles for '{user.username}'.")
+            return redirect('adminpanel:staff_list')
+    else:
+        form = StaffUserRoleForm(instance=user)
+    return render(request, 'adminpanel/staff_edit.html', {'form': form, 'staff_user': user})
 
 @login_required
 def adminpanel(request):
@@ -99,29 +147,211 @@ def adminpanel(request):
 @login_required
 @groups_required('Manager', 'Merchandiser')
 def catalogue_list(request):
-    q = request.GET.get('q', '').strip()
-    category_id = request.GET.get('category')
-    subcategory_id = request.GET.get('subcategory')
-    products = Product.objects.all().select_related('product_subcategory').order_by('-sku')
-    if category_id:
-        products = products.filter(product_subcategory__category_id=category_id)
-    if subcategory_id:
-        products = products.filter(product_subcategory_id=subcategory_id)
+    q = request.GET.get('q','').strip()
+    category_ids = request.GET.getlist('categories')
+    subcategory_ids = request.GET.getlist('subcategories')
+    visibility_filter = request.GET.getlist('visibility')  # values: 'visible','hidden'
+    sort = request.GET.get('sort','').strip()
+
+    qs = Product.objects.all()
+
     if q:
-        products = products.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
+        qs = qs.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
 
-    paginator = Paginator(products, 25)
-    page = request.GET.get('page')
-    products_page = paginator.get_page(page)
+    if category_ids:
+        qs = qs.filter(product_subcategory__category__category_id__in=category_ids)
 
-    categories = Category.objects.all()
-    return render(request, 'adminpanel/catalogue_list.html', {
-        'products': products_page,
-        'categories': categories,
+    if subcategory_ids:
+        qs = qs.filter(product_subcategory__subcategory_id__in=subcategory_ids)
+
+    # visibility logic
+    vis = set(visibility_filter)
+    if vis and vis != {'visible','hidden'}:
+        if vis == {'hidden'}:
+            qs = qs.filter(hidden_flag=True)
+        elif vis == {'visible'}:
+            qs = qs.filter(hidden_flag=False)
+
+    if sort == 'sku_asc':
+        qs = qs.order_by('sku')
+    elif sort == 'sku_desc':
+        qs = qs.order_by('-sku')
+    elif sort == 'name_asc':
+        qs = qs.order_by('product_name')
+    elif sort == 'name_desc':
+        qs = qs.order_by('-product_name')
+    else:
+        qs = qs.order_by('sku')
+
+    categories = Category.objects.order_by('category_name').prefetch_related('category_subcategory')
+    subcategories = SubCategory.objects.order_by('subcategory_name')
+
+    paginator = Paginator(qs, 25)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request,'adminpanel/catalogue_list.html',{
+        'products': page_obj,
         'q': q,
-        'category_id': category_id,
-        'subcategory_id': subcategory_id,
+        'category_ids': category_ids,
+        'subcategory_ids': subcategory_ids,
+        'visibility_filter': visibility_filter,
+        'categories': categories,
+        'subcategories': subcategories,
+        'sort': sort,
     })
+
+@login_required
+@groups_required('Manager','Merchandiser')
+def bulk_products_upload(request):
+    from .forms import BulkProductUploadForm
+    if request.method == 'POST':
+        form = BulkProductUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            f = form.cleaned_data['file']
+            update_existing = form.cleaned_data['update_existing']
+            try:
+                data = f.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                messages.error(request, "File must be UTF-8 encoded.")
+                return redirect('adminpanel:bulk_products_upload')
+
+            reader = csv.DictReader(io.StringIO(data))
+            if not reader.fieldnames:
+                messages.error(request, "Missing header row.")
+                return redirect('adminpanel:bulk_products_upload')
+
+            header_lower = {h.lower(): h for h in reader.fieldnames}
+            required_cols = {'sku','name','category','qty','price'}
+            missing = required_cols - set(header_lower.keys())
+            if missing:
+                messages.error(request, f"Missing required columns: {', '.join(sorted(missing))}")
+                return redirect('adminpanel:bulk_products_upload')
+
+            created = updated = 0
+            errors = []
+
+            # detect fields present on Product
+            product_field_names = {f.name for f in Product._meta.fields}
+            has_hidden_flag = 'hidden_flag' in product_field_names
+
+            with transaction.atomic():
+                for line_no, row in enumerate(reader, start=2):
+                    row_l = {k.lower(): (v or '').strip() for k, v in row.items()}
+
+                    sku         = row_l.get('sku')
+                    name        = row_l.get('name')
+                    cat_name    = row_l.get('category')              # maps to product_category + Category model
+                    sub_name    = row_l.get('subcategory','')        # optional
+                    desc        = row_l.get('description','')        # optional
+                    qty_raw     = row_l.get('qty')
+                    price_raw   = row_l.get('price')
+                    reorder_raw = row_l.get('reorder_qty') or row_l.get('reorder_quantity') or ''
+                    rating_raw  = row_l.get('rating','')
+                    hidden_raw  = row_l.get('hidden','').lower()
+
+                    if not sku or not name:
+                        errors.append(f"Line {line_no}: missing sku or name")
+                        continue
+                    if not cat_name:
+                        errors.append(f"Line {line_no}: category required")
+                        continue
+
+                    try:
+                        qty = int(qty_raw)
+                    except:
+                        errors.append(f"Line {line_no}: bad qty '{qty_raw}'")
+                        continue
+
+                    try:
+                        price = Decimal(price_raw)
+                    except:
+                        errors.append(f"Line {line_no}: bad price '{price_raw}'")
+                        continue
+
+                    try:
+                        reorder_qty = int(reorder_raw) if reorder_raw else 0
+                    except:
+                        errors.append(f"Line {line_no}: bad reorder_qty '{reorder_raw}' (using 0)")
+                        reorder_qty = 0
+
+                    try:
+                        rating = float(rating_raw) if rating_raw else 0.0
+                    except:
+                        errors.append(f"Line {line_no}: bad rating '{rating_raw}' (using 0.0)")
+                        rating = 0.0
+
+                    category = Category.objects.filter(category_name__iexact=cat_name).first()
+                    if not category:
+                        category = Category.objects.create(category_name=cat_name)
+
+                    subcat = None
+                    if sub_name:
+                        subcat = SubCategory.objects.filter(
+                            category=category,
+                            subcategory_name__iexact=sub_name
+                        ).first()
+                        if not subcat:
+                            subcat = SubCategory.objects.create(category=category, subcategory_name=sub_name)
+
+                    hidden_flag = hidden_raw in {'1','true','yes','y'}
+
+                    prod = Product.objects.filter(sku=sku).first()
+                    if prod:
+                        if update_existing:
+                            prod.product_name = name
+                            prod.product_category = cat_name
+                            if subcat:
+                                prod.product_subcategory = subcat
+                            if desc:
+                                prod.product_description = desc
+                            prod.quantity_on_hand = qty
+                            if 'reorder_quantity' in product_field_names:
+                                prod.reorder_quantity = reorder_qty
+                            if 'unit_price' in product_field_names:
+                                prod.unit_price = float(price)
+                            if 'product_rating' in product_field_names:
+                                prod.product_rating = rating
+                            if has_hidden_flag:
+                                prod.hidden_flag = hidden_flag
+                            prod.save()
+                            updated += 1
+                        else:
+                            errors.append(f"Line {line_no}: SKU '{sku}' exists (skipped)")
+                    else:
+                        create_kwargs = dict(
+                            sku=sku,
+                            product_name=name,
+                            product_description=desc or '—',
+                            product_category=cat_name,
+                            quantity_on_hand=qty,
+                        )
+                        if 'reorder_quantity' in product_field_names:
+                            create_kwargs['reorder_quantity'] = reorder_qty
+                        if 'unit_price' in product_field_names:
+                            create_kwargs['unit_price'] = float(price)
+                        if 'product_rating' in product_field_names:
+                            create_kwargs['product_rating'] = rating
+                        if subcat:
+                            create_kwargs['product_subcategory'] = subcat
+                        if has_hidden_flag:
+                            create_kwargs['hidden_flag'] = hidden_flag
+                        try:
+                            Product.objects.create(**create_kwargs)
+                            created += 1
+                        except Exception as e:
+                            errors.append(f"Line {line_no}: create failed ({e})")
+
+            if created:
+                messages.success(request, f"Created {created} products.")
+            if updated:
+                messages.success(request, f"Updated {updated} products.")
+            if errors:
+                preview = " | ".join(errors[:8]) + (" ..." if len(errors) > 8 else "")
+                messages.error(request, f"{len(errors)} issues: {preview}")
+            return redirect('adminpanel:catalogue_list')
+    else:
+        form = BulkProductUploadForm()
+    return render(request, 'adminpanel/bulk_products_upload.html', {'form': form})
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
@@ -189,7 +419,10 @@ def category_create(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Category created.")
-    return redirect('adminpanel:catalogue_list')
+            return redirect('adminpanel:catalogue_list')
+    else:
+        form = CategoryForm()
+    return render(request, 'adminpanel/category_form.html', {'form': form})
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
@@ -213,7 +446,10 @@ def subcategory_create(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Subcategory created.")
-    return redirect('adminpanel:catalogue_list')
+            return redirect('adminpanel:catalogue_list')
+    else:
+        form = SubCategoryForm()
+    return render(request, 'adminpanel/subcategory_form.html', {'form': form})
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
@@ -230,41 +466,113 @@ def subcategory_edit(request, pk):
     return render(request, 'adminpanel/subcategory_form.html', {'form': form, 'subcategory': subcat})
 
 @login_required
-@groups_required('Manager')
-def category_merge(request, source_pk, target_pk):
-    if request.method == 'POST':
-        source = get_object_or_404(Category, pk=source_pk)
-        target = get_object_or_404(Category, pk=target_pk)
-        # Reassign subcategories
-        SubCategory.objects.filter(category=source).update(category=target)
-        # Reassign products via subcategories already moved
-        messages.success(request, f"Merged category {source.category_name} into {target.category_name}.")
-        source.delete()
-    return redirect('adminpanel:catalogue_list')
+@groups_required('Manager', 'Merchandiser')
+def catalogue_export(request):
+    q = request.GET.get('q','').strip()
+    category_ids = request.GET.getlist('categories')
+    subcategory_ids = request.GET.getlist('subcategories')
+    visibility_filter = request.GET.getlist('visibility')
+    sort = request.GET.get('sort','').strip()
+
+    qs = (Product.objects
+          .all()
+          .select_related('product_subcategory', 'product_subcategory__category'))
+
+    if q:
+        qs = qs.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
+    if category_ids:
+        qs = qs.filter(product_subcategory__category__category_id__in=category_ids)
+    if subcategory_ids:
+        qs = qs.filter(product_subcategory__subcategory_id__in=subcategory_ids)
+
+    # Hidden handling (field or HiddenProduct table)
+    product_field_names = {f.name for f in Product._meta.fields}
+    has_hidden_flag = 'hidden_flag' in product_field_names
+    if not has_hidden_flag:
+        qs = qs.annotate(hidden_exists=Exists(HiddenProduct.objects.filter(product__pk=OuterRef('pk'))))
+
+    # visibility filter
+    vis = set(visibility_filter)
+    if vis and vis != {'visible','hidden'}:
+        if 'hidden' in vis:
+            qs = qs.filter(hidden_flag=True) if has_hidden_flag else qs.filter(hidden_exists=True)
+        elif 'visible' in vis:
+            qs = qs.filter(hidden_flag=False) if has_hidden_flag else qs.filter(hidden_exists=False)
+
+    # sorting
+    if sort == 'sku_asc':
+        qs = qs.order_by('sku')
+    elif sort == 'sku_desc':
+        qs = qs.order_by('-sku')
+    elif sort == 'name_asc':
+        qs = qs.order_by('product_name')
+    elif sort == 'name_desc':
+        qs = qs.order_by('-product_name')
+    else:
+        qs = qs.order_by('sku')
+
+    # CSV response
+    headers = ['SKU','Name','Category','Subcategory','Qty','Reorder Qty','Unit Price','Rating','Hidden']
+    rows = []
+    for p in qs:
+        cat = p.product_subcategory.category.category_name if p.product_subcategory and p.product_subcategory.category_id else ''
+        sub = p.product_subcategory.subcategory_name if p.product_subcategory else ''
+        hidden = (getattr(p, 'hidden_flag', None) if has_hidden_flag else getattr(p, 'hidden_exists', False)) or False
+        rows.append([
+            p.sku,
+            p.product_name,
+            cat,
+            sub,
+            getattr(p, 'quantity_on_hand', ''),
+            getattr(p, 'reorder_quantity', ''),
+            getattr(p, 'unit_price', ''),
+            getattr(p, 'product_rating', ''),
+            'Yes' if hidden else 'No',
+        ])
+
+    stamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    resp = HttpResponse(content_type='text/csv; charset=utf-8')
+    resp['Content-Disposition'] = f'attachment; filename="products_{stamp}.csv"'
+    writer = csv.writer(resp)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return resp
 
 @login_required
 @groups_required('Manager', 'Inventory')
 def inventory_list(request):
-    q = request.GET.get('q', '').strip()
+    q = (request.GET.get('q') or '').strip()
     show_low = request.GET.get('low') == '1'
-    products = Product.objects.all().order_by('sku')
+    sort = (request.GET.get('sort') or '').strip()
+
+    qs = Product.objects.all()
+
     if q:
-        products = products.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
+        qs = qs.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
+
     if show_low:
-        products = products.filter(quantity_on_hand__lte=F('reorder_quantity'))
+        qs = qs.filter(quantity_on_hand__lte=F('reorder_quantity'))
 
-    paginator = Paginator(products, 50)
-    page = request.GET.get('page')
-    page_obj = paginator.get_page(page)
+    # sorting
+    if sort == 'sku_asc':
+        qs = qs.order_by('sku')
+    elif sort == 'sku_desc':
+        qs = qs.order_by('-sku')
+    elif sort == 'name_asc':
+        qs = qs.order_by('product_name')
+    elif sort == 'name_desc':
+        qs = qs.order_by('-product_name')
+    else:
+        qs = qs.order_by('sku')
 
-    # Precompute low stock flags
-    low_map = {p.sku: (p.quantity_on_hand <= p.reorder_quantity) for p in page_obj}
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
 
     return render(request, 'adminpanel/inventory_list.html', {
         'products': page_obj,
         'q': q,
         'show_low': show_low,
-        'low_map': low_map,
+        'sort': sort,
     })
 
 @login_required
@@ -285,21 +593,58 @@ def inventory_update_stock(request, pk):
     })
 
 @login_required
+def inventory_export(request):
+    q = (request.GET.get('q') or '').strip()
+    show_low = request.GET.get('low') == '1'
+
+    qs = Product.objects.all().only('sku','product_name','quantity_on_hand','reorder_quantity') \
+         .order_by('sku')
+
+    if q:
+        qs = qs.filter(Q(sku__icontains=q) | Q(product_name__icontains=q))
+    if show_low:
+        qs = qs.filter(quantity_on_hand__lte=F('reorder_quantity'))
+
+    headers = ['SKU', 'Name', 'Qty On Hand', 'Reorder Qty', 'Status']
+    rows = []
+    for p in qs:
+        status = 'LOW' if p.quantity_on_hand <= p.reorder_quantity else 'OK'
+        rows.append([p.sku, p.product_name, p.quantity_on_hand, p.reorder_quantity, status])
+
+    stamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    resp = HttpResponse(content_type='text/csv; charset=utf-8')
+    resp['Content-Disposition'] = f'attachment; filename="inventory_{stamp}.csv"'
+    writer = csv.writer(resp)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return resp
+
+@login_required
 @groups_required('Manager', 'Support')
 def customer_list(request):
-    q = request.GET.get('q', '').strip()
-    customers = Customer.objects.all().order_by('id')
-    if q:
-        customers = customers.filter(
-            Q(first_name__icontains=q) |
-            Q(last_name__icontains=q) |
-            Q(email__icontains=q)
-        )
-    paginator = Paginator(customers, 25)
+    q = (request.GET.get('q') or '').strip()
     page = request.GET.get('page')
-    page_obj = paginator.get_page(page)
+
+    fields = [
+        'id','age','gender','employment_status','occupation','education',
+        'household_size','has_children','monthly_income','preferred_category',
+    ]
+
+    qs = Customer.objects.only(*fields).order_by('-id')
+
+    if q:
+        qs = qs.filter(
+            Q(gender__icontains=q) |
+            Q(employment_status__icontains=q) |
+            Q(occupation__icontains=q) |
+            Q(education__icontains=q) |
+            Q(preferred_category__icontains=q)
+        )
+
+    paginator = Paginator(qs, 50)
+    customers_page = paginator.get_page(page)
     return render(request, 'adminpanel/customer_list.html', {
-        'customers': page_obj,
+        'customers': customers_page,
         'q': q,
     })
 
@@ -307,12 +652,20 @@ def customer_list(request):
 @groups_required('Manager', 'Support')
 def customer_detail(request, pk):
     customer = get_object_or_404(Customer, pk=pk)
-    orders = (Order.objects
-              .filter(customer=customer)
-              .order_by('-order_date')
-              .prefetch_related('order_items__product'))
-    total_orders = orders.count()
-    total_spent = sum(o.order_price for o in orders)
+
+    orders_qs = (Order.objects
+                 .filter(customer=customer)
+                 .order_by('-order_date')
+                 .prefetch_related('order_items__product'))
+
+    # paginate orders
+    page = request.GET.get('page')
+    paginator = Paginator(orders_qs, 25)
+    orders = paginator.get_page(page)
+
+    total_orders = orders_qs.count()
+    total_spent = orders_qs.aggregate(total=Sum('order_price'))['total'] or 0.0
+
     return render(request, 'adminpanel/customer_detail.html', {
         'customer': customer,
         'orders': orders,

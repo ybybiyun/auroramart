@@ -1,0 +1,39 @@
+{% extends "adminpanel/base.html" %}
+{% block title %}Staff • AuroraMart Admin{% endblock %}
+{% block header_title %}Staff Management{% endblock %}
+{% block content %}
+<form method="get" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap;">
+  <input type="text" name="q" placeholder="Search username, name, email" value="{{ q }}" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Search</button>
+  <a href="{% url 'adminpanel:staff_create' %}" style="padding:6px 14px; border:1px solid var(--border); background:#fff; border-radius:6px; text-decoration:none;">Create Staff</a>
+</form>
+
+<table>
+  <thead>
+    <tr><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td>{{ u.first_name }} {{ u.last_name }}</td>
+      <td>{{ u.email }}</td>
+      <td>
+        {% if u.groups.all %}
+          {% for g in u.groups.all %}<span style="background:#eef2ff; padding:3px 8px; border-radius:10px; font-size:11px; margin-right:4px;">{{ g.name }}</span>{% endfor %}
+        {% else %}<span style="color:#999;">None</span>{% endif %}
+      </td>
+      <td><a href="{% url 'adminpanel:staff_edit' u.id %}">Edit</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">No staff found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div style="margin-top:10px;">
+  {% if users.has_previous %}<a href="?page={{ users.previous_page_number }}&q={{ q }}">Prev</a>{% endif %}
+  Page {{ users.number }} of {{ users.paginator.num_pages }}
+  {% if users.has_next %}<a href="?page={{ users.next_page_number }}&q={{ q }}">Next</a>{% endif %}
+</div>
+{% endblock %}

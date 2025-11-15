@@ -1,70 +1,173 @@
-<!doctype html>
-<html>
-<head><title>Catalogue</title></head>
-<body>
-<h1>Product Catalogue</h1>
+{% extends "adminpanel/base.html" %}
+{% block title %}Catalogue • AuroraMart Admin{% endblock %}
+{% block header_title %}Catalogue{% endblock %}
+{% block content %}
+<style>
+.filter-bar{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px;}
+.ms-drop{position:relative;}
+.ms-btn{padding:8px 12px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;font-size:13px;min-width:160px;text-align:left;}
+.ms-panel{position:absolute;top:100%;left:0;z-index:30;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:none;max-height:240px;overflow:auto;min-width:240px;box-shadow:0 8px 24px -6px rgba(0,0,0,.25);}
+.ms-drop.open .ms-panel{display:block;}
+.ms-panel label{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 2px;cursor:pointer;}
+.tag-count{background:#eef2ff;color:#304ba3;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:auto;}
+</style>
 
-<!-- ...existing code... -->
-<form method="get">
-  <input type="text" name="q" placeholder="Search SKU or name" value="{{ q }}">
-  <select name="category">
-    <option value="">All categories</option>
+<form method="get" class="filter-bar" id="catalogueFilter">
+  <input type="text" name="q" placeholder="Search SKU or name" value="{{ q }}" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:200px;">
+
+  <!-- Categories dropdown -->
+  <div class="ms-drop" data-target="categories">
+    <button type="button" class="ms-btn">Categories <span class="tag-count" id="catCount">0</span></button>
+    <div class="ms-panel">
+      {% for c in categories %}
+      <label><input type="checkbox" name="categories" value="{{ c.category_id }}" {% if c.category_id|stringformat:"s" in category_ids %}checked{% endif %}> {{ c.category_name }}</label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Subcategories dropdown -->
+  <div class="ms-drop" data-target="subcategories">
+  <button type="button" class="ms-btn">Subcategories <span class="tag-count" id="subcatCount">0</span></button>
+  <div class="ms-panel">
+    <style>.group-head{margin:6px 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#556;} .group-head:not(:first-child){padding-top:4px;border-top:1px solid #eee;}</style>
     {% for c in categories %}
-      <option value="{{ c.category_id }}" {% if category_id == c.category_id|stringformat:"s" %}selected{% endif %}>{{ c.category_name }}</option>
+      <div class="group-head">{{ c.category_name }}</div>
+      {% for s in c.category_subcategory.all %}
+        <label>
+          <input type="checkbox" name="subcategories" value="{{ s.subcategory_id }}"
+                 {% if s.subcategory_id|stringformat:"s" in subcategory_ids %}checked{% endif %}>
+          {{ s.subcategory_name }}
+        </label>
+      {% empty %}
+        <div style="font-size:11px;color:#999;">(No subcategories)</div>
+      {% endfor %}
     {% endfor %}
+  </div>
+</div>
+
+  <!-- Visibility dropdown -->
+  <div class="ms-drop" data-target="visibility">
+    <button type="button" class="ms-btn">Visibility <span class="tag-count" id="visCount">0</span></button>
+    <div class="ms-panel">
+      <label><input type="checkbox" name="visibility" value="visible" {% if 'visible' in visibility_filter %}checked{% endif %}> Visible</label>
+      <label><input type="checkbox" name="visibility" value="hidden" {% if 'hidden' in visibility_filter %}checked{% endif %}> Hidden</label>
+    </div>
+  </div>
+
+  <!-- Sort -->
+  <select name="sort" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:140px;">
+    <option value="">Sort</option>
+    <option value="sku_asc" {% if sort == 'sku_asc' %}selected{% endif %}>SKU ↑</option>
+    <option value="sku_desc" {% if sort == 'sku_desc' %}selected{% endif %}>SKU ↓</option>
+    <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name A→Z</option>
+    <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name Z→A</option>
   </select>
-  <label>
-    <input type="checkbox" name="show_hidden" value="1" {% if show_hidden %}checked{% endif %}> Show hidden
-  </label>
-  <button type="submit">Apply</button>
-  <a href="{% url 'adminpanel:product_create' %}">Add product</a>
+
+  <button type="submit" style="padding:8px 16px;border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:6px;">Apply</button>
+  <a href="{% url 'adminpanel:catalogue_list' %}" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:6px;text-decoration:none;">Reset</a>
+  <a href="{% url 'adminpanel:product_create' %}" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:6px;text-decoration:none;">Add New Product</a>
+  <a href="{% url 'adminpanel:bulk_products_upload' %}" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:6px;text-decoration:none;">Bulk Upload Products</a>
+    <a href="{% url 'adminpanel:category_create' %}" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:6px;text-decoration:none;">New Category</a>
+    <a href="{% url 'adminpanel:subcategory_create' %}" style="padding:8px 16px;border:1px solid var(--border);background:#fff;border-radius:6px;text-decoration:none;">New Subcategory</a>
+ <button
+    type="button"
+    id="exportCsvBtn"
+    style="padding:8px 16px;border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:6px;">
+    Export CSV
+  </button>
+  <span id="exportStatus" style="font-size:12px;color:#555;margin-left:8px;"></span>
 </form>
 
-<h3>Create Category</h3>
-<form method="post" action="{% url 'adminpanel:category_create' %}">{% csrf_token %}
-  {{ category_form.category_name }}
-  <button type="submit">Add Category</button>
-</form>
-
-<h3>Create Subcategory</h3>
-<form method="post" action="{% url 'adminpanel:subcategory_create' %}">{% csrf_token %}
-  {{ subcategory_form.subcategory_name }} {{ subcategory_form.category }}
-  <button type="submit">Add Subcategory</button>
-</form>
-
-<table border="1" cellpadding="6">
-  <tr>
-    <th>SKU</th><th>Name</th><th>Category/Subcategory</th><th>Qty</th><th>Unit Price</th><th>Hidden?</th><th>Actions</th>
-  </tr>
-  {% for p in products %}
-  <tr>
-    <td>{{ p.sku }}</td>
-    <td>{{ p.product_name }}</td>
-    <td>
-      {% if p.product_subcategory %}
-        {{ p.product_subcategory.subcategory_name }} ({{ p.product_subcategory.category.category_name }})
-      {% else %}
-        —
-      {% endif %}
-    </td>
-    <td>{{ p.quantity_on_hand }}</td>
-    <td>{{ p.unit_price }}</td>
-    <td>{% if p.hidden_flag %}Yes{% else %}No{% endif %}</td>
-    <td>
-      <a href="{% url 'adminpanel:product_edit' p.sku %}">Edit</a> |
-      <a href="{% url 'adminpanel:product_delete' p.sku %}">Delete</a> |
-      <a href="{% url 'adminpanel:product_toggle_hidden' p.sku %}">{% if p.hidden_flag %}Unhide{% else %}Hide{% endif %}</a>
-    </td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="7">No products.</td></tr>
-  {% endfor %}
+<table>
+  <thead>
+    <tr>
+      <th>SKU</th><th>Name</th><th>Category/Subcategory</th><th>Qty</th><th>Unit Price</th><th>Hidden?</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{{ p.sku }}</td>
+      <td>{{ p.product_name }}</td>
+      <td>{% if p.product_subcategory %}{{ p.product_subcategory.category.category_name }} / {{ p.product_subcategory.subcategory_name }}{% else %}—{% endif %}</td>
+      <td>{{ p.quantity_on_hand }}</td>
+      <td>{{ p.unit_price }}</td>
+      <td>{% if p.hidden_flag %}Yes{% else %}No{% endif %}</td>
+      <td class="action-links">
+        <a href="{% url 'adminpanel:product_edit' p.sku %}">Edit</a>
+        {% if p.hidden_flag %}
+          <a href="{% url 'adminpanel:product_toggle_hidden' p.sku %}" class="unhide">Unhide</a>
+        {% else %}
+          <a href="{% url 'adminpanel:product_toggle_hidden' p.sku %}" class="hide">Hide</a>
+        {% endif %}
+        <a href="{% url 'adminpanel:product_delete' p.sku %}" class="delete" onclick="return confirm('Delete product {{ p.sku }}?');">Delete</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7">No products.</td></tr>
+    {% endfor %}
+  </tbody>
 </table>
 
-<div>
-  {% if products.has_previous %}<a href="?page={{ products.previous_page_number }}">Previous</a>{% endif %}
+
+<div style="margin-top:10px;">
+  {% if products.has_previous %}
+    <a href="?page={{ products.previous_page_number }}&q={{ q }}&sort={{ sort }}{% for v in visibility_filter %}&visibility={{ v }}{% endfor %}{% for c in category_ids %}&categories={{ c }}{% endfor %}{% for s in subcategory_ids %}&subcategories={{ s }}{% endfor %}">Prev</a>
+  {% endif %}
   Page {{ products.number }} of {{ products.paginator.num_pages }}
-  {% if products.has_next %}<a href="?page={{ products.next_page_number }}">Next</a>{% endif %}
+  {% if products.has_next %}
+    <a href="?page={{ products.next_page_number }}&q={{ q }}&sort={{ sort }}{% for v in visibility_filter %}&visibility={{ v }}{% endfor %}{% for c in category_ids %}&categories={{ c }}{% endfor %}{% for s in subcategory_ids %}&subcategories={{ s }}{% endfor %}">Next</a>
+  {% endif %}
 </div>
-</body>
-</html>
+
+<script>
+document.querySelectorAll('.ms-drop .ms-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>btn.parentElement.classList.toggle('open'));
+});
+function updateCounts(){
+  const cSel=[...document.querySelectorAll('input[name="categories"]:checked')].length;
+  const sSel=[...document.querySelectorAll('input[name="subcategories"]:checked')].length;
+  const vSel=[...document.querySelectorAll('input[name="visibility"]:checked')].length;
+  const catCount=document.getElementById('catCount');
+  const subcatCount=document.getElementById('subcatCount');
+  const visCount=document.getElementById('visCount');
+  if(catCount) catCount.textContent=cSel;
+  if(subcatCount) subcatCount.textContent=sSel;
+  if(visCount) visCount.textContent=vSel;
+}
+document.addEventListener('change',e=>{
+  if(['categories','subcategories','visibility'].includes(e.target.name)) updateCounts();
+});
+updateCounts();
+document.addEventListener('click',e=>{
+  document.querySelectorAll('.ms-drop').forEach(d=>{
+    if(!d.contains(e.target)) d.classList.remove('open');
+  });
+});
+function buildQuery(form){
+  const fd = new FormData(form);
+  const qs = new URLSearchParams();
+  for (const [k, v] of fd.entries()) { if (v !== '') qs.append(k, v); }
+  return qs.toString();
+}
+const form = document.getElementById('catalogueFilter');
+const exportUrl = "{% url 'adminpanel:catalogue_export' %}";
+const exportBtn = document.getElementById('exportCsvBtn');
+
+exportBtn?.addEventListener('click', ()=>{
+  document.querySelectorAll('.ms-drop').forEach(d=>d.classList.remove('open'));
+
+  exportBtn.disabled = true;
+  exportBtn.textContent = 'Preparing CSV...';
+
+  const qs = form ? buildQuery(form) : '';
+  const url = exportUrl + (qs ? ("?"+qs) : "");
+  window.location.href = url;
+
+  setTimeout(()=>{
+    exportBtn.disabled = false;
+    exportBtn.textContent = 'Export CSV';
+  }, 3000);
+});
+</script>
+{% endblock %}
