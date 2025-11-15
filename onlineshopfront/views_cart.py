@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.db import models
 from django.utils import timezone
 from .models import Order, OrderItem
+from . import recommender
 
 
 def _get_or_create_session_cart(session):
@@ -114,8 +115,35 @@ def view_cart(request):
     except Exception:
         notice = None
 
-    return render(request, 'onlineshopfront/cart.html', {'items': items, 'total': total, 'cart_notice': notice})
+    # --- AI RECOMMENDATION ---
+    recommended_products = []
+    try:
+        # 1. Get all product SKUs from the cart
+        cart_skus = [item['sku'] for item in items]
 
+        if cart_skus:
+            # 2. Call the recommendation function from recommender.py
+            # Get 3 recommendations
+            recommended_skus = recommender.get_recommendations(cart_skus, top_n=3)
+            
+            # 3. Get the actual Product objects from the database
+            if recommended_skus:
+                # Exclude items already in the cart from the recommendations
+                recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(sku__in=cart_skus)
+    except Exception as e:
+        print(f"Recommendation failed: {e}")
+        # Fail silently, the page will just not show recommendations
+    # --- END AI RECOMMENDATION ---
+
+
+    # Add the recommendations to the context
+    context = {
+        'items': items,
+        'total': total,
+        'cart_notice': notice,
+        'recommended_products': recommended_products  # <-- Add this
+    }
+    return render(request, 'onlineshopfront/cart.html', context)
 
 def remove_from_cart(request, sku):
     if request.user.is_authenticated:

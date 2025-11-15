@@ -58,7 +58,6 @@
         </div>
     </form>
     <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:12px;align-items:center">
-        <!-- Checkout selected items form -->
         <form id="checkout-form" method="post" action="{% url 'onlineshopfront:checkout' %}">
             {% csrf_token %}
             <button type="submit"
@@ -69,6 +68,30 @@
         <button type="submit" formmethod="post" formaction="{% url 'onlineshopfront:update_cart' %}"
             style="background:#e2e8f0;color:#111;padding:10px 14px;border-radius:8px;border:none">Update cart</button>
     </div>
+
+    {% if recommended_products %}
+      <div class="recommendations" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+        <h3>You Might Also Like...</h3>
+        
+        <div class="product-grid" style="display:flex; flex-wrap:wrap; gap:16px;">
+          {% for product in recommended_products %}
+            
+            <div class="product-card" style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; width: 200px;">
+              <a href="{% url 'onlineshopfront:product_detail' product.pk %}" style="text-decoration: none; color: inherit;">
+                
+                {% if product.image_url %}
+                  <img src="{{ product.image_url }}" alt="{{ product.product_name }}" style="width:100%; height:auto; aspect-ratio: 1 / 1;">
+                {% endif %}
+                
+                <h4 style="font-size: 16px; margin: 8px 0;">{{ product.product_name }}</h4>
+                <p style="font-size: 14px; color: #333;">${{ product.unit_price }}</p>
+              </a>
+            </div>
+            
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
     {% else %}
     <p>Your cart is empty. <a href="{% url 'onlineshopfront:product_list' %}">Continue shopping</a></p>
     {% endif %}
