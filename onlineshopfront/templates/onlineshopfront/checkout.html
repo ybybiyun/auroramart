@@ -14,24 +14,23 @@
 
         <div class="checkout-grid">
             <div class="checkout-left">
-                <table style="width:100%;border-collapse:collapse;margin-top:12px">
+                <table class="checkout-table">
                     <thead>
                         <tr>
-                            <th style="text-align:left;padding:8px">Product</th>
-                            <th style="padding:8px">Price</th>
-                            <th style="padding:8px">Qty</th>
-                            <th style="padding:8px">Subtotal</th>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                            <th>Subtotal</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for it in items %}
                         <tr>
-                            <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku
-                                    }}</div>
+                            <td class="product-cell">{{ it.name }}<div class="sku">SKU: {{ it.sku }}</div>
                             </td>
-                            <td style="padding:8px;text-align:center">${{ it.price }}</td>
-                            <td style="padding:8px;text-align:center">{{ it.quantity }}</td>
-                            <td style="padding:8px;text-align:center">${{ it.subtotal|floatformat:2 }}</td>
+                            <td class="numeric">${{ it.price }}</td>
+                            <td class="numeric">{{ it.quantity }}</td>
+                            <td class="numeric">${{ it.subtotal|floatformat:2 }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -40,59 +39,48 @@
                 <form method="post" action="{% url 'onlineshopfront:checkout' %}" class="checkout-form">
                     {% csrf_token %}
                     <div class="form-section">
-                        <h3 style="padding:8px">Delivery address</h3>
+                        <h3>Delivery address</h3>
                         <div class="form-grid">
                             <label class="form-field full">
                                 <div class="field-label">Address</div>
                                 <textarea name="address"
-                                    class="input textarea">{{ form.address|default:initial.address|default_if_none:"" }}</textarea>
-                                {% if errors.address %}<div class="form-error">{{ errors.address }}</div>{% endif %}
+                                    class="input textarea">{{ form.address.value|default_if_none:"" }}</textarea>
                             </label>
 
                             <label class="form-field">
-                                <div class="field-label" style="padding:8px">Postal / ZIP</div>
+                                <div class="field-label">Postal / ZIP</div>
                                 <input name="postal_code" class="input"
-                                    value="{{ form.postal_code|default:initial.postal_code|default_if_none:"" }}" />
-                                {% if errors.postal_code %}<div class="form-error">{{ errors.postal_code }}</div>{%
-                                endif %}
+                                    value="{{ form.postal_code.value|default_if_none:""}}" />
                             </label>
 
                             <label class="form-field">
-                                <div class="field-label" style="padding:8px">Phone</div>
-                                <input name="phone" class="input"
-                                    value="{{ form.phone|default:initial.phone|default_if_none:"" }}" />
-                                {% if errors.phone %}<div class="form-error">{{ errors.phone }}</div>{% endif %}
+                                <div class="field-label">Phone</div>
+                                <input name="phone" class="input" value="{{ form.phone.value|default_if_none:""}}" />
                             </label>
                         </div>
                     </div>
 
                     <div class="form-section">
-                        <h3 style="padding:8px">Payment</h3>
+                        <h3>Payment</h3>
                         <div class="radio-list">
-                            <label><input type="radio" name="payment_method" value="Card" {% if
-                                    form.payment_method=='Card' %}checked{% endif %}> Card</label>
-                            <label><input type="radio" name="payment_method" value="Paynow" {% if
-                                    form.payment_method=='Paynow' %}checked{% endif %}> Paynow</label>
-                            <label><input type="radio" name="payment_method" value="Apple Pay" {% if
-                                    form.payment_method=='Apple Pay' %}checked{% endif %}> Apple Pay</label>
+                            <label><input type="radio" name="payment_method" value="Card" {% if form.payment_method == 'Card' %}checked{% endif %}> Card</label>
+                            <label><input type="radio" name="payment_method" value="Paynow" {% if form.payment_method == 'Paynow' %}checked{% endif %}> Paynow</label>
                         </div>
-                        {% if errors.payment_method %}<div class="form-error">{{ errors.payment_method }}</div>{% endif
-                        %}
 
                         <div id="card-fields" class="card-fields">
                             <div class="form-grid card-grid">
                                 <label class="form-field full">
-                                    <div class="field-label" style="padding:8px">Card number</div>
+                                    <div class="field-label">Card number</div>
                                     <input name="card_number" class="input" value="{{ form.card_number }}" />
                                 </label>
 
                                 <label class="form-field small">
-                                    <div class="field-label" style="padding:8px">Exp month</div>
+                                    <div class="field-label">Exp month</div>
                                     <input name="card_exp_month" class="input" value="{{ form.card_exp_month }}" />
                                 </label>
 
                                 <label class="form-field small">
-                                    <div class="field-label" style="padding:8px">Exp year</div>
+                                    <div class="field-label">Exp year</div>
                                     <input name="card_exp_year" class="input" value="{{ form.card_exp_year }}" />
                                 </label>
 
@@ -108,8 +96,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button style="padding:8px" margin="20pxm" type="submit" class="place-order-btn">Place
-                            order</button>
+                        <button type="submit" class="place-order-btn">Place order</button>
                         <a class="link-muted" href="{% url 'onlineshopfront:view_cart' %}">Edit cart</a>
                     </div>
                 </form>
