@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  {% load static %}
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Admin Panel{% endblock %}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --bg:#f5f7fb; --panel:#ffffff; --border:#e2e6ee; --accent:#5b6ef5;
+      --text:#1f2d3d; --muted:#6b7a90; --danger:#c52727; --success:#2f9348;
+    }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    a { color:var(--accent); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .layout { display:flex; min-height:100vh; }
+    .sidebar { width:230px; background:#1e2a3a; color:#fff; display:flex; flex-direction:column; }
+    .brand { padding:18px 20px; font-weight:600; font-size:18px; border-bottom:1px solid rgba(255,255,255,.08); }
+    .nav { list-style:none; margin:0; padding:10px 0; flex:1; }
+    .nav li { }
+    .nav a { display:flex; align-items:center; gap:10px; padding:10px 18px; font-size:14px; color:#b9c4d3; }
+    .nav a.active, .nav a:hover { background:rgba(255,255,255,.08); color:#fff; }
+    .nav .section-label { padding:12px 18px 6px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; opacity:.55; }
+    .footer-small { padding:14px 18px; font-size:11px; opacity:.6; }
+    .main { flex:1; display:flex; flex-direction:column; }
+    .header { background:var(--panel); padding:12px 28px; display:flex; align-items:center; gap:24px; border-bottom:1px solid var(--border); }
+    .header h1 { font-size:18px; margin:0; font-weight:600; }
+    .grow { flex:1; }
+    .search-box form { display:flex; }
+    .search-box input { border:1px solid var(--border); border-radius:6px; padding:6px 10px; background:#f3f5f9; }
+    .user-menu a { font-size:14px; margin-left:14px; }
+    .content-scroll { flex:1; overflow-y:auto; padding:26px 34px; }
+    .footer { background:var(--panel); padding:14px 28px; font-size:12px; border-top:1px solid var(--border); text-align:center; }
+    /* Utility */
+    .grid { display:flex; flex-wrap:wrap; gap:16px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px 18px; position:relative; flex:1 1 220px; min-width:220px; }
+    .card h3 { margin:0 0 6px; font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+    .card .value { font-size:26px; font-weight:600; }
+    .tag-up { color:var(--success); font-size:12px; font-weight:500; }
+    .tag-down { color:var(--danger); font-size:12px; font-weight:500; }
+    table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    th, td { padding:10px 12px; font-size:13px; text-align:left; border-bottom:1px solid var(--border); }
+    th { background:#f0f3f8; font-weight:600; color:#46556b; }
+    tr:last-child td { border-bottom:none; }
+    .status-low { color:#fff; background:var(--danger); padding:3px 8px; border-radius:10px; font-size:11px; }
+    .status-ok { color:#fff; background:var(--success); padding:3px 8px; border-radius:10px; font-size:11px; }
+    @media (max-width:960px){ .sidebar { position:fixed; z-index:50; transform:translateX(-100%); transition:.25s; }
+      .sidebar.open { transform:translateX(0); } .header .menu-btn { display:block; }
+    }
+    .menu-btn { display:none; cursor:pointer; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">AuroraMart Admin</div>
+   <ul class="nav">
+  <li><a href="{% url 'adminpanel:adminpanel' %}" class="{% if request.resolver_match.url_name == 'adminpanel' %}active{% endif %}">Dashboard</a></li>
+  {% if can_catalogue %}
+    <li><a href="{% url 'adminpanel:catalogue_list' %}" class="{% if request.resolver_match.url_name == 'catalogue_list' %}active{% endif %}">Catalogue</a></li>
+  {% endif %}
+  {% if can_inventory %}
+    <li><a href="{% url 'adminpanel:inventory_list' %}" class="{% if request.resolver_match.url_name == 'inventory_list' %}active{% endif %}">Inventory</a></li>
+  {% endif %}
+  {% if can_customers %}
+    <li><a href="{% url 'adminpanel:customer_list' %}" class="{% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">Customers</a></li>
+  {% endif %}
+  {% if can_staff %}
+    <li><a href="{% url 'adminpanel:staff_list' %}" class="{% if request.resolver_match.url_name == 'staff_list' %}active{% endif %}">Staff & Roles</a></li>
+  {% endif %}
+</ul>
+    <div class="footer-small">© {{ now|date:"Y" }} AuroraMart</div>
+  </nav>
+  <div class="main">
+    <header class="header">
+      <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1>{% block header_title %}Admin{% endblock %}</h1>
+      <div class="grow"></div>
+      <div class="user-menu">
+        {% if user.is_authenticated %}
+          <span style="font-size:13px; color:var(--muted);">Hi {{ user.username }}</span>
+          <a href="{% url 'adminpanel:logout' %}">Logout</a>
+        {% else %}
+          <a href="{% url 'adminpanel:login' %}">Login</a>
+        {% endif %}
+      </div>
+    </header>
+    <main class="content-scroll">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+      <span>AuroraMart Admin • Built for internal use</span>
+    </footer>
+  </div>
+</div>
+<script>
+  // Close sidebar on outside click (mobile)
+  document.addEventListener('click', e=>{
+    const sb = document.getElementById('sidebar');
+    if(window.innerWidth < 960 && sb.classList.contains('open') && !sb.contains(e.target) && !e.target.classList.contains('menu-btn')){
+      sb.classList.remove('open');
+    }
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

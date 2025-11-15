@@ -1,0 +1,62 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}AuroraMart Admin{% endblock %}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --panel:#ffffff;
+      --border:#d8dee8;
+      --accent:linear-gradient(135deg,#15e1d3,#7f41ff);
+      --text:#1f2d3d;
+      --muted:#6b7a90;
+      --danger:#c52727;
+    }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    a { color:#67a5ff; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 24px; }
+    .panel { width:100%; max-width:440px; background:var(--panel); border:1px solid var(--border); border-radius:24px; padding:46px 48px 40px; box-shadow:0 18px 40px -12px rgba(0,20,40,.25); }
+    h1 { margin:0 0 6px; font-size:24px; font-weight:600; }
+    p.desc { margin:0 0 26px; font-size:14px; color:var(--muted); }
+    form { display:flex; flex-direction:column; gap:16px; }
+    form .field-wrapper { display:flex; flex-direction:column; gap:6px; }
+    label { font-size:13px; font-weight:500; color:var(--muted); }
+    input[type=text], input[type=password], input[type=email] {
+      background:#f5f7fb; border:1px solid var(--border); color:var(--text);
+      padding:12px 14px; border-radius:12px; font-size:14px;
+      transition:.15s;
+    }
+   input[type=text]:focus, input[type=password]:focus, input[type=email]:focus {
+      outline:none; border-color:#8aa4ff; box-shadow:0 0 0 3px rgba(120,150,255,.25);
+    }
+    button.primary {
+      background:var(--accent); color:#fff; border:none; padding:12px 18px;
+      border-radius:12px; font-size:14px; font-weight:600; cursor:pointer;
+    }
+    button.primary:hover { filter:brightness(1.08); }
+    .logo-box { text-align:center; margin-bottom:30px; }
+    .logo-box img { width:110px; height:auto; display:block; margin:0 auto 14px; }
+    .small { font-size:12px; color:var(--muted); margin-top:24px; text-align:center; }
+    .error { background:#ffe9ec; border:1px solid #ffb3c1; padding:10px 14px; border-radius:12px; font-size:13px; color:#c52727; margin-bottom:6px; }
+    .success { background:#e6f9f1; border:1px solid #95e9bb; padding:10px 14px; border-radius:12px; font-size:13px; color:#2f7d4f; margin-bottom:6px; }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <div class="logo-box">
+      <img src="{% static 'adminpanel/img/auroramart-logo.png' %}" alt="AuroraMart Logo">
+      <h1>{% block header_title %}AuroraMart Admin{% endblock %}</h1>
+      <p class="desc">{% block sub_title %}Secure access to internal tools{% endblock %}</p>
+    </div>
+    {% block content %}{% endblock %}
+    <div class="small">© {{ now|date:"Y" }} AuroraMart</div>
+  </div>
+</div>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
