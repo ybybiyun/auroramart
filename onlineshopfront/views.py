@@ -9,6 +9,7 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from . import recommender
+
 User = get_user_model()
 
 
@@ -34,12 +35,10 @@ def index(request):
                     'education': getattr(cust, 'education', 'Secondary') or 'Secondary'
                 }
                 try:
-                    from .recommender import predict_preferred_category_from_profile
-                    predicted_category = predict_preferred_category_from_profile(profile)
+                    predicted_category = recommender.predict_preferred_category(profile)
                     if predicted_category:
                         recommended_products = Product.objects.filter(product_category__iexact=predicted_category).order_by('-product_rating')[:8]
                 except Exception:
-                    # If model not trained or any error occurs, fail gracefully
                     predicted_category = None
                     recommended_products = None
         except Exception:
@@ -168,23 +167,42 @@ def product_list(request, category_slug=None):
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
     categories = Category.objects.all()
-    # Pop any in-card notification set by add_to_cart for non-JS clients
-    in_card_notif = None
-    try:
-        in_card_notif = request.session.pop('in_card_notif', None)
-        request.session.modified = True
-    except Exception:
-        in_card_notif = None
+    in_card_notif = request.session.pop('in_card_notif', None)
 
-    # find similar products by subcategory (exclude the current product)
+    # --- AI RECOMMENDATIONS (Frequently Bought Together) ---
+    recommended_products = []
+    try:
+        # 1. Get the SKU of the current product as a list
+        current_sku = [product.sku]
+        
+        # 2. Get associated SKUs from the recommender
+        recommended_skus = recommender.get_associated_products(current_sku)
+        
+        # 3. Fetch the actual Product objects
+        if recommended_skus:
+            # Get the first 4 recommendations, excluding the product itself
+            recommended_products = Product.objects.filter(sku__in=recommended_skus).exclude(pk=product.pk)[:4]
+            
+    except Exception as e:
+        print(f"Error getting product recommendations: {e}")
+        recommended_products = []
+    # --- END AI RECOMMENDATIONS ---
+
+    # Your original "Similar products" code
     similar_products = []
     try:
-        # limit to 5 similar products to display in a single row
         similar_products = Product.objects.filter(product_subcategory=product.product_subcategory).exclude(pk=product.pk).order_by('-product_rating')[:5]
     except Exception:
         similar_products = []
 
-    return render(request, "onlineshopfront/product_detail.html", {"product": product, "categories": categories, 'in_card_notif': in_card_notif, 'similar_products': similar_products})
+    # Add recommended_products to the context
+    return render(request, "onlineshopfront/product_detail.html", {
+        "product": product,
+        "categories": categories,
+        'in_card_notif': in_card_notif,
+        'similar_products': similar_products,
+        'recommended_products': recommended_products  # <-- Add this
+    })
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
@@ -346,21 +364,21 @@ def create_account(request):
 
         # 2. Call the prediction function from recommender.py
         try:
-            # Note: This assumes your function in recommender.py is
-            # named 'predict_preferred_category'.
             category_name = recommender.predict_preferred_category(customer_data)
 
             # 3. Redirect to the personalized category page
             if category_name:
                 from django.utils.text import slugify
-                # We need to find the category object to get its slug
-                # This assumes your Category model has a `category_name` field
                 category_obj = Category.objects.filter(category_name__iexact=category_name).first()
+                
+                # --- THIS IS THE FIX ---
                 if category_obj and getattr(category_obj, 'slug', None):
-                    return redirect('onlineshopfront:product_list', category_slug=category_obj.slug)
+                    # Use the correct URL name that accepts a slug
+                    return redirect('onlineshopfront:product_list_by_category', category_slug=category_obj.slug)
                 else:
-                    # Fallback if slug isn't found
-                    return redirect('onlineshopfront:product_list', category_slug=slugify(category_name))
+                    # Fallback with the correct URL name
+                    return redirect('onlineshopfront:product_list_by_category', category_slug=slugify(category_name))
+                # --- END OF FIX ---
 
         except Exception as e:
             # If prediction fails, just fall back to the normal index page
@@ -375,7 +393,6 @@ def create_account(request):
         return redirect('onlineshopfront:index')
 
     return render(request, 'onlineshopfront/create_account.html', {'categories': categories})
-
 
 @csrf_exempt
 def login_view(request):

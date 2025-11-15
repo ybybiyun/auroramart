@@ -36,21 +36,39 @@
             <p style="margin-top:12px"><a href="{% url 'onlineshopfront:product_list' %}">Back to products</a></p>
         </div>
     </div>
-    {% if similar_products %}
-    <div style="max-width:900px;margin:20px auto;padding:12px 20px;background:#fff;border-radius:8px">
-        <h3 style="margin:0 0 12px 0">Similar products</h3>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-            {% for sp in similar_products %}
-            <a href="{% url 'onlineshopfront:product_detail' sp.pk %}"
-                style="width:140px;text-decoration:none;color:inherit">
-                <img src="{% static 'images/coke.png' %}" alt="{{ sp.product_name }}"
-                    style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
-                <div style="font-size:13px;margin-top:6px;font-weight:600">{{ sp.product_name }}</div>
-                <div style="color:#666;font-size:13px">${{ sp.unit_price }}</div>
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 </div>
+
+{% if recommended_products %}
+<div style="max-width:900px;margin:20px auto;padding:12px 20px;background:#fff;border-radius:8px">
+    <h3 style="margin:0 0 12px 0">Frequently Bought Together</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+        {% for prod in recommended_products %}
+        <a href="{% url 'onlineshopfront:product_detail' prod.pk %}"
+            style="width:140px;text-decoration:none;color:inherit">
+            <img src="{% static 'images/coke.png' %}" alt="{{ prod.product_name }}"
+                style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
+            <div style="font-size:13px;margin-top:6px;font-weight:600">{{ prod.product_name }}</div>
+            <div style="color:#666;font-size:13px">${{ prod.unit_price }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% if similar_products %}
+<div style="max-width:900px;margin:20px auto;padding:12px 20px;background:#fff;border-radius:8px">
+    <h3 style="margin:0 0 12px 0">Similar products</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+        {% for sp in similar_products %}
+        <a href="{% url 'onlineshopfront:product_detail' sp.pk %}"
+            style="width:140px;text-decoration:none;color:inherit">
+            <img src="{% static 'images/coke.png' %}" alt="{{ sp.product_name }}"
+                style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
+            <div style="font-size:13px;margin-top:6px;font-weight:600">{{ sp.product_name }}</div>
+            <div style="color:#666;font-size:13px">${{ sp.unit_price }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
