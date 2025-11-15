@@ -1,51 +1,87 @@
+# onlineshopfront/recommender.py
+
 import joblib
-from pathlib import Path
-from django.conf import settings
+import os
 import pandas as pd
+from django.apps import apps
 
-_MODEL = None
-_COLUMNS = None
+# --- 1. LOAD MODELS (as per professor's instructions) ---
 
-def _load_model():
-    global _MODEL, _COLUMNS
-    if _MODEL is not None:
-        return _MODEL, _COLUMNS
+# Get the path to the 'onlineshopfront' app
+app_path = apps.get_app_config('onlineshopfront').path
 
-    model_path = Path(settings.BASE_DIR) / 'models' / 'preferred_category_dt.joblib'
-    if not model_path.exists():
-        raise FileNotFoundError(f'Model file not found at {model_path}. Train it with manage.py train_preferred_category')
+# Load Decision Tree Classifier
+model_path_classifier = os.path.join(app_path, 'mlmodels', 'b2c_customers_100.joblib')
+classifier_model = joblib.load(model_path_classifier)
 
-    data = joblib.load(model_path)
-    _MODEL = data.get('model')
-    _COLUMNS = data.get('columns')
-    return _MODEL, _COLUMNS
+# Load Association Rules
+model_path_rules = os.path.join(app_path, 'mlmodels', 'b2c_products_500_transactions_50k.joblib')
+association_rules = joblib.load(model_path_rules)
 
-def predict_preferred_category_from_profile(profile: dict):
-    """Given a profile dict with keys: age, household_size, has_children, monthly_income_sgd,
-    gender, employment_status, occupation, education — return predicted preferred_category.
+
+# --- 2. PREDICTION FUNCTION 1 (from predict_classifier.ipynb) ---
+
+def predict_preferred_category(customer_data):
     """
-    model, cols = _load_model()
+    Predicts the preferred category for a new customer.
+    customer_data should be a dict, e.g.:
+    {
+        'age': 29, 'household_size': 2, 'has_children': 1, 'monthly_income_sgd': 5000,
+        'gender': 'Female', 'employment_status': 'Full-time',
+        'occupation': 'Sales', 'education': 'Bachelor'
+    }
+    """
+    columns = {
+        'age':'int64', 'household_size':'int64', 'has_children':'int64', 'monthly_income_sgd':'float64',
+        'gender_Female':'bool', 'gender_Male':'bool', 'employment_status_Full-time':'bool',
+        'employment_status_Part-time':'bool', 'employment_status_Retired':'bool',
+        'employment_status_Self-employed':'bool', 'employment_status_Student':'bool',
+        'occupation_Admin':'bool', 'occupation_Education':'bool', 'occupation_Sales':'bool',
+        'occupation_Service':'bool', 'occupation_Skilled Trades':'bool', 'occupation_Tech':'bool',
+        'education_Bachelor':'bool', 'education_Diploma':'bool', 'education_Doctorate':'bool',
+        'education_Master':'bool', 'education_Secondary':'bool'
+    }
 
-    # build a single-row dataframe and one-hot encode to match training columns
-    df = pd.DataFrame([{
-        'age': profile.get('age', 0),
-        'household_size': profile.get('household_size', 0),
-        'has_children': profile.get('has_children', 0),
-        'monthly_income_sgd': profile.get('monthly_income_sgd', profile.get('monthly_income', 0.0)),
-        'gender': profile.get('gender', 'Male'),
-        'employment_status': profile.get('employment_status', 'Full-time'),
-        'occupation': profile.get('occupation', 'Other'),
-        'education': profile.get('education', 'Secondary')
-    }])
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in columns.items()})
+    customer_df = pd.DataFrame([customer_data])
+    customer_encoded = pd.get_dummies(customer_df, columns=['gender', 'employment_status', 'occupation', 'education'])    
 
-    df_enc = pd.get_dummies(df, columns=['gender', 'employment_status', 'occupation', 'education'])
+    for col in df.columns:
+        if col not in customer_encoded.columns:
+            if df[col].dtype == bool:
+                df[col] = False
+            else:
+                df[col] = 0
+        else:
+            df[col] = customer_encoded[col]
 
-    # ensure columns align
-    for c in cols:
-        if c not in df_enc.columns:
-            df_enc[c] = 0
+    # Get the prediction
+    prediction = classifier_model.predict(df)    
 
-    df_enc = df_enc[cols]
+    # Return the first item, e.g., "Beauty & Personal Care"
+    return prediction[0]
 
-    pred = model.predict(df_enc)
-    return pred[0]
+
+# --- 3. PREDICTION FUNCTION 2 (from predict_associationrules.ipynb) ---
+
+def get_recommendations(items, metric='confidence', top_n=3):
+    """
+    Gets product recommendations based on a list of items (SKUs) in the cart.
+    e.g., items = ['AIA-JM4T8BP6', 'AEA-BMAE38SR']
+    """
+    recommendations = set()
+
+    for item in items:
+        # Find rules where the item is in the antecedents
+        matched_rules = association_rules[association_rules['antecedents'].apply(lambda x: item in x)]
+        # Sort by the specified metric
+        top_rules = matched_rules.sort_values(by=metric, ascending=False).head(top_n)
+
+        for _, row in top_rules.iterrows():
+            recommendations.update(row['consequents'])
+
+    # Remove items that are already in the input list
+    recommendations.difference_update(items)
+
+    # Return a list of SKUs
+    return list(recommendations)[:top_n]
