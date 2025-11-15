@@ -60,10 +60,96 @@ def product_list(request, category_slug=None):
         # Products store category as text in `product_category`
         products = products.filter(product_category__iexact=category.category_name)
 
+    # If category provided as a GET parameter (from the filter form), honor it too
+    if not category and request.GET.get('category'):
+        try:
+            get_cat = request.GET.get('category')
+            if get_cat:
+                cat = get_object_or_404(Category, slug=get_cat)
+                category = cat
+                products = products.filter(product_category__iexact=cat.category_name)
+        except Exception:
+            pass
+
+    # Filters: price range, rating, availability
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    min_rating = request.GET.get('min_rating')
+    available = request.GET.get('available')
+
+    try:
+        if min_price:
+            mp = float(min_price)
+            products = products.filter(unit_price__gte=mp)
+    except Exception:
+        pass
+
+    try:
+        if max_price:
+            mp = float(max_price)
+            products = products.filter(unit_price__lte=mp)
+    except Exception:
+        pass
+
+    try:
+        if min_rating:
+            mr = float(min_rating)
+            products = products.filter(product_rating__gte=mr)
+    except Exception:
+        pass
+
+    try:
+        if available and available.lower() in ('1','true','yes','on'):
+            products = products.filter(quantity_on_hand__gt=0)
+    except Exception:
+        pass
+
+    # Sorting
+    sort = request.GET.get('sort')
+    if sort:
+        # Map friendly sort names to ORM orderings
+        ordering_map = {
+            'price_asc': 'unit_price',
+            'price_desc': '-unit_price',
+            'rating_desc': '-product_rating',
+            'rating_asc': 'product_rating',
+            'name_asc': 'product_name',
+            'name_desc': '-product_name',
+            'available': '-quantity_on_hand',
+        }
+        order = ordering_map.get(sort)
+        if order:
+            try:
+                products = products.order_by(order)
+            except Exception:
+                pass
+
     # pagination
     paginator = Paginator(products, 24)  # 24 products per page
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # Prepare similar-products for items on the current page.
+    try:
+        # collect subcategory ids for products on this page
+        subcat_ids = {getattr(p, 'product_subcategory_id', None) for p in page_obj.object_list}
+        subcat_ids.discard(None)
+        # fetch other products in those subcategories (exclude the current page SKUs)
+        page_skus = [getattr(p, 'sku', None) for p in page_obj.object_list]
+        similar_qs = Product.objects.filter(product_subcategory_id__in=subcat_ids).exclude(sku__in=page_skus).order_by('-product_rating')
+        # group by subcategory id
+        from collections import defaultdict
+        sim_map = defaultdict(list)
+        for s in similar_qs:
+            sim_map[getattr(s, 'product_subcategory_id', None)].append(s)
+
+        # attach up to 4 similar products to each product on the page
+        for p in page_obj.object_list:
+            p.similar_products = sim_map.get(getattr(p, 'product_subcategory_id', None), [])[:4]
+    except Exception:
+        # on any error, ensure attribute exists to avoid template errors
+        for p in page_obj.object_list:
+            setattr(p, 'similar_products', [])
 
     # Pop any in-card notification set by add_to_cart for non-JS clients
     in_card_notif = None
@@ -74,7 +160,9 @@ def product_list(request, category_slug=None):
         in_card_notif = None
 
     categories = Category.objects.all()
-    return render(request, "onlineshopfront/product_list.html", {"category": category, "products": page_obj, "q": q, "categories": categories, 'in_card_notif': in_card_notif})
+    # Rating choices as strings so template comparisons work with request.GET values
+    rating_choices = [str(x) for x in range(0, 6)]
+    return render(request, "onlineshopfront/product_list.html", {"category": category, "products": page_obj, "q": q, "categories": categories, 'in_card_notif': in_card_notif, 'rating_choices': rating_choices})
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -87,7 +175,15 @@ def product_detail(request, pk):
     except Exception:
         in_card_notif = None
 
-    return render(request, "onlineshopfront/product_detail.html", {"product": product, "categories": categories, 'in_card_notif': in_card_notif})
+    # find similar products by subcategory (exclude the current product)
+    similar_products = []
+    try:
+        # limit to 5 similar products to display in a single row
+        similar_products = Product.objects.filter(product_subcategory=product.product_subcategory).exclude(pk=product.pk).order_by('-product_rating')[:5]
+    except Exception:
+        similar_products = []
+
+    return render(request, "onlineshopfront/product_detail.html", {"product": product, "categories": categories, 'in_card_notif': in_card_notif, 'similar_products': similar_products})
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 

@@ -22,8 +22,7 @@
         <tbody>
             {% for it in order.order_items.all %}
             <tr>
-                <td style="padding:8px">{{ it.product.product_name }}<div style="color:#666;font-size:12px">SKU: {{
-                        it.product.sku }}</div>
+                <td style="padding:8px">{{ it.product.product_name }}
                 </td>
                 <td style="padding:8px;text-align:center">${{ it.unit_price }}</td>
                 <td style="padding:8px;text-align:center">{{ it.quantity }}</td>

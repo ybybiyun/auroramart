@@ -33,11 +33,29 @@ body {
 
 /* === Header search form === */
 .search-form {
-    flex: 1 1 480px;
-    max-width: 720px;
-    margin: 0 18px;
+    /* Centered in header */
+    position: absolute;
+    /* center relative to the viewport for a true middle placement */
+    left: 50vw;
+    transform: translateX(-50%);
+    width: min(720px, 60vw);
+    z-index: 1100;
     display: flex;
     align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+/* Prevent the search form container from blocking clicks to header actions
+   while keeping the input and button interactive. This avoids the centered
+   search overlay intercepting clicks on the Sign in / Create account links. */
+.search-form {
+    pointer-events: none;
+}
+
+.search-form input[type="search"],
+.search-form button {
+    pointer-events: auto;
 }
 
 .search-form input[type="search"] {
@@ -146,6 +164,31 @@ body {
     margin-left: auto;
 }
 
+/* Make auth/cart area sit above the centered search form so links remain clickable */
+.cart-and-auth {
+    position: relative;
+    z-index: 1400;
+}
+
+/* Hover / floating effect for auth links and cart */
+.auth-link,
+.cart-link {
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    cursor: pointer;
+}
+
+.auth-link:hover,
+.cart-link:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-link:active,
+.cart-link:active {
+    transform: translateY(-2px);
+}
+
 /* Ensure auth links are left of the cart and the cart is the final (rightmost) item */
 .cart-and-auth .auth-links {
     order: 1;
@@ -168,6 +211,9 @@ body {
     padding: 6px 10px;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    /* ensure pointer cursor on auth links */
+    display: inline-block;
 }
 
 .auth-link:hover {
@@ -591,4 +637,8 @@ body {
 
 .product-card-link .product-card {
     height: 100%;
+}
+
+.textarea {
+  width: 1000px;
 }

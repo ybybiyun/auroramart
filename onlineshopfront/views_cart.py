@@ -197,7 +197,19 @@ def checkout(request):
             # redirect anonymous users to login first
             return redirect(f"{reverse('onlineshopfront:login')}?next={reverse('onlineshopfront:checkout')}")
 
-        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total})
+        # prefill address from customer profile when available
+        initial = {}
+        try:
+            if request.user.is_authenticated:
+                cust = getattr(request.user, 'customer_profile', None)
+                if cust is not None:
+                    initial['address'] = getattr(cust, 'address', '') or ''
+                    initial['postal_code'] = getattr(cust, 'postal_code', '') or ''
+                    initial['phone'] = getattr(cust, 'phone', '') or ''
+        except Exception:
+            pass
+
+        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'initial': initial})
 
     # POST -> place order
     if not request.user.is_authenticated:
@@ -216,25 +228,105 @@ def checkout(request):
         messages.error(request, 'Your cart is empty.')
         return redirect('onlineshopfront:view_cart')
 
+    # validate form fields
+    data = request.POST
+    errors = {}
+    address = (data.get('address') or '').strip()
+    postal_code = (data.get('postal_code') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    payment_method = (data.get('payment_method') or '').strip()
+
+    if not address:
+        errors['address'] = 'Delivery address is required.'
+    if not postal_code:
+        errors['postal_code'] = 'Postal / ZIP code is required.'
+    if not phone:
+        errors['phone'] = 'Contact phone is required.'
+    if payment_method not in ('Card', 'Paynow', 'Apple Pay'):
+        errors['payment_method'] = 'Please select a payment method.'
+
+    # if card payment, validate card fields (basic checks only)
+    if payment_method == 'Card':
+        card_number = (data.get('card_number') or '').replace(' ', '')
+        card_exp_month = (data.get('card_exp_month') or '').strip()
+        card_exp_year = (data.get('card_exp_year') or '').strip()
+        card_cvv = (data.get('card_cvv') or '').strip()
+        if not (card_number.isdigit() and 12 < len(card_number) <= 19):
+            errors['card_number'] = 'Please enter a valid card number.'
+        try:
+            m = int(card_exp_month)
+            y = int(card_exp_year)
+            now = timezone.now()
+            if not (1 <= m <= 12 and (y > now.year or (y == now.year and m >= now.month))):
+                errors['card_expiry'] = 'Card expiry must be in the future.'
+        except Exception:
+            errors['card_expiry'] = 'Invalid expiry date.'
+        if not (card_cvv.isdigit() and len(card_cvv) in (3, 4)):
+            errors['card_cvv'] = 'Invalid CVV.'
+
+    # If there are validation errors, re-render the checkout page with errors and previous input
+    if errors:
+        items = []
+        total = 0.0
+        try:
+            for ci in cart.items.select_related('product').all():
+                subtotal = ci.quantity * ci.product.unit_price
+                items.append({'sku': ci.product.sku, 'name': ci.product.product_name, 'price': ci.product.unit_price, 'quantity': ci.quantity, 'subtotal': subtotal})
+                total += subtotal
+        except Exception:
+            items = []
+
+        form_values = {
+            'address': address,
+            'postal_code': postal_code,
+            'phone': phone,
+            'payment_method': payment_method,
+        }
+        # pass card fields back except sensitive ones (do not echo CVV)
+        form_values['card_number'] = data.get('card_number', '')
+        form_values['card_exp_month'] = data.get('card_exp_month', '')
+        form_values['card_exp_year'] = data.get('card_exp_year', '')
+
+        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'errors': errors, 'form': form_values})
+
     # create order
     order = Order.objects.create(order_status='Order Placed', order_date=timezone.now().date(), order_price=0.0, required_date=timezone.now().date(), shipping_fee=0.0, customer=cust)
-    # create items
-    for ci in cart.items.select_related('product').all():
-        OrderItem.objects.create(order=order, product=ci.product, quantity=ci.quantity, unit_price=ci.product.unit_price)
 
-    # update total
+    # If the POST contained a list of selected SKUs, only create order items for those SKUs
+    selected = request.POST.getlist('selected') if request.method == 'POST' else []
+    if selected:
+        # authenticated path: pull quantities from CartItems
+        created_any = False
+        for ci in cart.items.select_related('product').all():
+            if str(ci.product.sku) in selected:
+                OrderItem.objects.create(order=order, product=ci.product, quantity=ci.quantity, unit_price=ci.product.unit_price)
+                # remove this cart item after ordering
+                ci.delete()
+                created_any = True
+        if not created_any:
+            # nothing matched; delete the empty order and show message
+            order.delete()
+            messages.error(request, 'No selected items were found in your cart.')
+            return redirect('onlineshopfront:view_cart')
+    else:
+        # create items for all cart items (previous full-cart behavior)
+        for ci in cart.items.select_related('product').all():
+            OrderItem.objects.create(order=order, product=ci.product, quantity=ci.quantity, unit_price=ci.product.unit_price)
+        # clear all cart items
+        cart.items.all().delete()
+
+    # clear guest session cart just in case (also remove selected skus from guest cart if provided)
     try:
-        order.update_order_total()
-    except Exception:
-        pass
-
-    # clear cart items
-    cart.items.all().delete()
-
-    # clear guest session cart just in case
-    try:
-        request.session.pop('cart', None)
-        request.session.modified = True
+        if request.session.get('cart'):
+            if selected:
+                sess = request.session.get('cart', {})
+                for s in selected:
+                    sess.pop(s, None)
+                request.session['cart'] = sess
+                request.session.modified = True
+            else:
+                request.session.pop('cart', None)
+                request.session.modified = True
     except Exception:
         pass
 
