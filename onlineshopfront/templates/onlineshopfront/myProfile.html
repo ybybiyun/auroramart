@@ -3,10 +3,34 @@
 
 {% block content %}
 <h2>My Profile</h2>
-<div class="profile-info">
-    <p><strong>Username:</strong> {{ user.username }}</p>
-    <p><strong>Email:</strong> {{ user.email }}</p>
-    <p><strong>First Name:</strong> {{ user.first_name }}</p>
-    <p><strong>Last Name:</strong> {{ user.last_name }}</p>
+<!-- Styles moved to static/onlineshopfront/css/styles.css -->
+
+<div class="profile-card profile-card--stacked">
+    <div class="profile-avatar">
+        <!-- Inline SVG fallback to ensure the avatar always renders even if static files aren't served -->
+        <svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="80" height="200" rx="200" fill="#eef0f2" />
+            <g transform="translate(10,10)">
+                <circle cx="50" cy="28" r="22" fill="#bfc6ca" />
+                <ellipse cx="50" cy="90" rx="40" ry="22" fill="#c7cfd3" />
+            </g>
+        </svg>
+    </div>
+    <div class="profile-info">
+        <h3>
+            {% if user.first_name or user.last_name %}
+            {{ user.first_name }} {{ user.last_name }}
+            {% else %}
+            {{ user.username }}
+            {% endif %}
+        </h3>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>First Name:</strong> {{ user.first_name }}</p>
+        <p><strong>Last Name:</strong> {{ user.last_name }}</p>
+        <div class="profile-actions">
+            <a class="btn-primary" href="{% url 'onlineshopfront:complete_profile' %}">Edit profile</a>
+        </div>
+    </div>
 </div>
+
 {% endblock %}

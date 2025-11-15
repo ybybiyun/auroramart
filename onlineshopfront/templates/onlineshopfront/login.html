@@ -8,6 +8,7 @@
     <h2>Sign in to AuroraMart</h2>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}" />
         <div style="margin-bottom:8px">
             <input name="email" placeholder="Email" style="width:100%;padding:8px" />
         </div>

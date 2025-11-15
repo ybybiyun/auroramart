@@ -8,7 +8,9 @@
     <h2>Your Shopping Cart</h2>
     {% if cart_notice %}
     <div style="text-align:center;margin-bottom:12px">
-        <div style="display:inline-block;background:#e9fff1;color:#0b7a3a;padding:8px 12px;border-radius:20px;border:1px solid #bff0d4">{{ cart_notice }}</div>
+        <div
+            style="display:inline-block;background:#e9fff1;color:#0b7a3a;padding:8px 12px;border-radius:20px;border:1px solid #bff0d4">
+            {{ cart_notice }}</div>
     </div>
     {% endif %}
 
@@ -18,6 +20,8 @@
         <table style="width:100%;border-collapse:collapse;margin-top:12px">
             <thead>
                 <tr>
+                    <th style="text-align:left;padding:8px"><input type="checkbox" id="select-all"
+                            class="select-checkbox" aria-label="Select all items" /></th>
                     <th style="text-align:left;padding:8px">Product</th>
                     <th style="padding:8px">Price</th>
                     <th style="padding:8px">Qty</th>
@@ -27,7 +31,11 @@
             </thead>
             <tbody>
                 {% for it in items %}
-                <tr>
+                <tr data-sku="{{ it.sku }}" data-price="{{ it.price }}">
+                    <td style="padding:8px;vertical-align:middle">
+                        <input type="checkbox" class="select-checkbox" name="selected" value="{{ it.sku }}"
+                            form="checkout-form" aria-label="Select item {{ it.name }}" />
+                    </td>
                     <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku }}</div>
                     </td>
                     <td style="padding:8px;text-align:center">${{ it.price }}</td>
@@ -43,25 +51,84 @@
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
             <div></div>
-            <div style="font-size:18px;font-weight:700">Total: ${{ total|floatformat:2 }}</div>
+            <div style="font-size:18px;font-weight:700">
+                <span id="cart-total-label">Total:</span>
+                $<span id="cart-total" data-full-total="{{ total|floatformat:2 }}">{{ total|floatformat:2 }}</span>
+            </div>
         </div>
     </form>
-    <script>
-    // Auto-submit cart form when quantity inputs change (debounced)
-    (function(){
-        const form = document.querySelector('form[action$="/cart/update/"]');
-        if(!form) return;
-        let timer = null;
-        form.querySelectorAll('input[type="number"]').forEach(function(inp){
-            inp.addEventListener('change', function(){
-                if(timer) clearTimeout(timer);
-                timer = setTimeout(function(){ form.submit(); }, 600);
-            });
-        });
-    })();
-    </script>
+    <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:12px;align-items:center">
+        <!-- Checkout selected items form -->
+        <form id="checkout-form" method="post" action="{% url 'onlineshopfront:checkout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                style="background:#0b7a3a;color:white;padding:10px 14px;border-radius:8px;border:none">Checkout
+                selected</button>
+        </form>
+
+        <button type="submit" formmethod="post" formaction="{% url 'onlineshopfront:update_cart' %}"
+            style="background:#e2e8f0;color:#111;padding:10px 14px;border-radius:8px;border:none">Update cart</button>
+    </div>
     {% else %}
     <p>Your cart is empty. <a href="{% url 'onlineshopfront:product_list' %}">Continue shopping</a></p>
     {% endif %}
 </div>
+<script>
+    // Update the displayed total to reflect selected items only.
+    function computeSelectedTotal() {
+        const checkboxes = Array.from(document.querySelectorAll('input[name="selected"]'));
+        const anyChecked = checkboxes.some(cb => cb.checked);
+        const totalSpan = document.getElementById('cart-total');
+        const label = document.getElementById('cart-total-label');
+        if (!totalSpan || !label) return;
+        const full = parseFloat(totalSpan.getAttribute('data-full-total') || '0');
+        if (!anyChecked) {
+            // show full cart total
+            totalSpan.textContent = full.toFixed(2);
+            label.textContent = 'Total:';
+            return;
+        }
+
+        let sum = 0.0;
+        checkboxes.forEach(cb => {
+            if (!cb.checked) return;
+            const sku = cb.value;
+            const row = document.querySelector(`tr[data-sku="${sku}"]`);
+            if (!row) return;
+            const price = parseFloat(row.dataset.price) || 0;
+            const qtyInput = document.querySelector(`[name="qty_${sku}"]`);
+            const qty = qtyInput ? (parseInt(qtyInput.value) || 0) : 0;
+            sum += price * qty;
+        });
+        totalSpan.textContent = sum.toFixed(2);
+        label.textContent = 'Selected total:';
+    }
+
+    // Attach listeners and wire up the "select all" checkbox
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectedCheckboxes = Array.from(document.querySelectorAll('input[name="selected"]'));
+        const qtyInputs = Array.from(document.querySelectorAll('input[type="number"]'));
+        const selectAll = document.getElementById('select-all');
+
+        function updateSelectAllState() {
+            if (!selectAll) return;
+            const allChecked = selectedCheckboxes.length > 0 && selectedCheckboxes.every(cb => cb.checked);
+            selectAll.checked = allChecked;
+        }
+
+        selectedCheckboxes.forEach(cb => cb.addEventListener('change', function () { computeSelectedTotal(); updateSelectAllState(); }));
+        qtyInputs.forEach(inp => inp.addEventListener('input', computeSelectedTotal));
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                selectedCheckboxes.forEach(cb => { cb.checked = selectAll.checked; });
+                computeSelectedTotal();
+            });
+        }
+
+        // initial compute and sync state
+        computeSelectedTotal();
+        updateSelectAllState();
+    });
+</script>
 {% endblock %}

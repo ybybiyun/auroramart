@@ -7,8 +7,6 @@
     <div style="display:flex;gap:18px;align-items:flex-start">
         <img src="{% static 'images/coke.png' %}" alt="{{ product.product_name }}" style="height:200px;">
         <div style="flex:1">
-            <div><strong>SKU:</strong> {{ product.sku }}</div>
-            <div><strong>Category:</strong> {{ product.product_category }}</div>
             <div style="font-size:20px;font-weight:700;margin-top:8px">${{ product.unit_price }}</div>
             <div style="color:#666;margin-top:8px">Rating: {{ product.product_rating }}</div>
             <div style="color:#666;margin-top:8px">Stock: {{ product.quantity_on_hand }}</div>
@@ -23,8 +21,36 @@
                     to cart</button>
             </form>
 
+            {# server-side in-card notification for non-JS clients #}
+            {% if in_card_notif and in_card_notif.sku|stringformat:"s" == product.pk|stringformat:"s" %}
+            <div class="notification in-card-notif success pop" role="status" style="position:relative;margin-top:12px">
+                <div class="notif-icon">✓</div>
+                <div class="notif-body">
+                    <div class="notif-title">Added to cart</div>
+                    <div class="notif-sub">{{ in_card_notif.text }}</div>
+                </div>
+                <button type="button" class="notif-close" aria-label="Close">✕</button>
+            </div>
+            {% endif %}
+
             <p style="margin-top:12px"><a href="{% url 'onlineshopfront:product_list' %}">Back to products</a></p>
         </div>
     </div>
+    {% if similar_products %}
+    <div style="max-width:900px;margin:20px auto;padding:12px 20px;background:#fff;border-radius:8px">
+        <h3 style="margin:0 0 12px 0">Similar products</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+            {% for sp in similar_products %}
+            <a href="{% url 'onlineshopfront:product_detail' sp.pk %}"
+                style="width:140px;text-decoration:none;color:inherit">
+                <img src="{% static 'images/coke.png' %}" alt="{{ sp.product_name }}"
+                    style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
+                <div style="font-size:13px;margin-top:6px;font-weight:600">{{ sp.product_name }}</div>
+                <div style="color:#666;font-size:13px">${{ sp.unit_price }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

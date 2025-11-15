@@ -1,0 +1,11 @@
+{% comment %} Small partial to render Django messages as fixed toasts (non-layout, overlay) {% endcomment %}
+{% if messages %}
+<div id="page-notifications" class="page-notifications">
+    {% for message in messages %}
+    <div class="notification {{ message.tags|default:'' }}" role="status" aria-live="polite">
+        <div class="notif-body">{{ message }}</div>
+        <button type="button" class="notif-close" aria-label="Close">✕</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
