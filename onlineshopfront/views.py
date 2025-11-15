@@ -8,6 +8,7 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from . import recommender
 User = get_user_model()
 
 
@@ -253,6 +254,13 @@ def settings(request):
 
 
 def create_account(request):
+    # prepare categories for the form (fixed list users can choose from)
+    from .models import Category as CustomerCategory
+    try:
+        categories = list(CustomerCategory.objects.all())
+    except Exception:
+        categories = []
+
     if request.method == 'POST':
         data = request.POST
         email = (data.get('email') or '').strip()
@@ -260,7 +268,7 @@ def create_account(request):
         confirm = data.get('confirm_password')
         if not email or not password or password != confirm:
             messages.error(request, 'Please provide email and matching passwords')
-            return render(request, 'onlineshopfront/create_account.html')
+            return render(request, 'onlineshopfront/create_account.html', {'categories': categories})
 
         # ensure username uniqueness (use email as username)
         username = email
@@ -281,6 +289,16 @@ def create_account(request):
 
         cust = None
         from .models import Customer
+
+        # Validate preferred_category against allowed categories
+        pref = (data.get('preferred_category') or '').strip()
+        try:
+            allowed = set([c.category_name for c in categories])
+        except Exception:
+            allowed = set()
+        if pref not in allowed:
+            pref = ''
+
         cust = Customer.objects.create(
             user=user,
             first_name=(data.get('first_name') or '').strip() or None,
@@ -295,7 +313,7 @@ def create_account(request):
             household_size=int(float(data.get('household_size') or 1)),
             has_children=int(float(data.get('has_children') or 0)),
             monthly_income=float(data.get('monthly_income') or 0.0),
-            preferred_category=(data.get('preferred_category') or '')
+            preferred_category=pref
         )
 
         # sync first/last name to auth.User
@@ -309,14 +327,54 @@ def create_account(request):
         except Exception:
             pass
 
+        # ... (user and customer are created above this) ...
+
         login(request, user)
-        messages.success(request, 'Account created and logged in')
+
+        # --- AI INTEGRATION ---
+        # 1. Create the data dict from the new customer object
+        customer_data = {
+            'age': cust.age,
+            'household_size': cust.household_size,
+            'has_children': cust.has_children,
+            'monthly_income_sgd': cust.monthly_income,
+            'gender': cust.gender,
+            'employment_status': cust.employment_status,
+            'occupation': cust.occupation,
+            'education': cust.education,
+        }
+
+        # 2. Call the prediction function from recommender.py
+        try:
+            # Note: This assumes your function in recommender.py is
+            # named 'predict_preferred_category'.
+            category_name = recommender.predict_preferred_category(customer_data)
+
+            # 3. Redirect to the personalized category page
+            if category_name:
+                from django.utils.text import slugify
+                # We need to find the category object to get its slug
+                # This assumes your Category model has a `category_name` field
+                category_obj = Category.objects.filter(category_name__iexact=category_name).first()
+                if category_obj and getattr(category_obj, 'slug', None):
+                    return redirect('onlineshopfront:product_list', category_slug=category_obj.slug)
+                else:
+                    # Fallback if slug isn't found
+                    return redirect('onlineshopfront:product_list', category_slug=slugify(category_name))
+
+        except Exception as e:
+            # If prediction fails, just fall back to the normal index page
+            print(f"Prediction failed: {e}")
+            pass  # Will fall through to the redirect below
+
+        # --- END AI INTEGRATION ---
+
         next_url = request.POST.get('next') or request.GET.get('next') or None
         if next_url:
             return redirect(next_url)
         return redirect('onlineshopfront:index')
 
-    return render(request, 'onlineshopfront/create_account.html')
+    return render(request, 'onlineshopfront/create_account.html', {'categories': categories})
 
 
 @csrf_exempt
@@ -449,7 +507,7 @@ def login_view(request):
         # After sign-in always go to home page
         messages.success(request, 'Signed in')
         return redirect('onlineshopfront:index')
-    return render(request, 'onlineshopfront/login.html')
+    return render(request, 'onlineshopfront/login.html', {'categories': categories})
 
 
 def logout_view(request):
