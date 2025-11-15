@@ -507,6 +507,7 @@ def login_view(request):
         # After sign-in always go to home page
         messages.success(request, 'Signed in')
         return redirect('onlineshopfront:index')
+    categories = Category.objects.all()
     return render(request, 'onlineshopfront/login.html', {'categories': categories})
 
 

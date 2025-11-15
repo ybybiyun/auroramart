@@ -343,6 +343,13 @@ def checkout(request):
         # clear all cart items
         cart.items.all().delete()
 
+    # After creating the order items, update the order total so the success page shows correct total
+    try:
+        order.update_order_total()
+    except Exception:
+        # If update fails, continue — the order still exists
+        pass
+
     # clear guest session cart just in case (also remove selected skus from guest cart if provided)
     try:
         if request.session.get('cart'):
@@ -358,6 +365,11 @@ def checkout(request):
     except Exception:
         pass
 
+    # friendly flash message and redirect to success page
+    try:
+        messages.success(request, 'Order placed successfully.')
+    except Exception:
+        pass
     return redirect('onlineshopfront:checkout_success', order_id=order.order_id)
 
 
