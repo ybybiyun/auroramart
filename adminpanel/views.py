@@ -1,9 +1,9 @@
 from asyncio.log import logger
 from django.utils import timezone
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from onlineshopfront.models import Product, Category, SubCategory, Customer, Order, OrderItem
 from django.db.models import Q, F, Sum, FloatField, Exists, OuterRef
-from .forms import ProductForm, CategoryForm, StaffUserCreationForm, StockUpdateForm, SubCategoryForm, StaffUserRoleForm, BulkProductUploadForm
+from .forms import ProductForm, CategoryForm, StaffUserCreationForm, StockUpdateForm, SubCategoryForm, StaffUserRoleForm
 from django.contrib.auth.models import User, Group
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect
@@ -16,8 +16,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.contrib.auth import logout
 from django.http import HttpResponse
-from urllib.parse import urlencode
-
+from decimal import Decimal
+from django.contrib import messages
 
 def logout_simple(request):
     logout(request)
@@ -365,6 +365,30 @@ def product_create(request):
     else:
         form = ProductForm()
     return render(request, 'adminpanel/product_form.html', {'form': form})
+
+@login_required
+@groups_required('Manager', 'Merchandiser')
+def product_edit(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if request.method == 'POST':
+        form = ProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Product updated")
+            return redirect('adminpanel:catalogue_list')
+    else:
+        form = ProductForm(instance=product)
+    return render(request, 'adminpanel/product_form.html', {'form': form, 'product': product})
+
+@login_required
+@groups_required('Manager', 'Merchandiser')
+def product_delete(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if request.method == 'POST':
+        product.delete()
+        messages.success(request, "Product deleted")
+        return redirect('adminpanel:catalogue_list')
+    return render(request, 'adminpanel/product_confirm_delete.html', {'product': product})
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
