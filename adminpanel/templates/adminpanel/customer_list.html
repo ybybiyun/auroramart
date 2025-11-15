@@ -2,75 +2,93 @@
 {% block title %}Customers • AuroraMart Admin{% endblock %}
 {% block header_title %}Customers{% endblock %}
 {% block content %}
-<form method="get" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+<form method="get" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
+  <input type="text" name="q" placeholder="Search name, email, phone, occupation..." value="{{ q }}" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; min-width:240px;">
+  <button type="submit" style="padding:6px 14px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Search</button>
   <details style="position:relative;">
     <summary style="list-style:none; cursor:pointer; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:#fff;">
       Filters
     </summary>
-    <div style="position:absolute; z-index:10; background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:6px; min-width:520px; box-shadow:0 4px 16px rgba(0,0,0,.06);">
-      <div style="display:grid; grid-template-columns: repeat(2, minmax(220px,1fr)); gap:10px;">
-        <label>Gender
-          <select name="gender" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in gender_opts %}
-              <option value="{{ v }}" {% if f_gender == v %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+    <div style="position:absolute; z-index:100; background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:6px; min-width:720px; box-shadow:0 4px 16px rgba(0,0,0,.06);">
+      <div style="display:grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap:14px; max-height:60vh; overflow:auto;">
+        <fieldset style="border:0;"><legend style="font-weight:600;">Age</legend>
+          {% for label, lo, hi in age_ranges %}
+            <label style="display:block;">
+              <input type="checkbox" name="age" value="{{ label }}" {% if label in sel_age %}checked{% endif %}>
+              {{ label }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Employment Status
-          <select name="employment" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in employment_opts %}
-              <option value="{{ v }}" {% if f_employment == v %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Gender</legend>
+          {% for v in gender_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="gender" value="{{ v }}" {% if v in sel_gender %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Occupation
-          <select name="occupation" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in occupation_opts %}
-              <option value="{{ v }}" {% if f_occupation == v %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Employment Status</legend>
+          {% for v in employment_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="employment" value="{{ v }}" {% if v in sel_employment %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Education
-          <select name="education" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in education_opts %}
-              <option value="{{ v }}" {% if f_education == v %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Occupation</legend>
+          {% for v in occupation_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="occupation" value="{{ v }}" {% if v in sel_occupation %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Household Size
-          <select name="household_size" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in household_opts %}
-              <option value="{{ v }}" {% if f_household|add:'' == v|add:'' %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Education</legend>
+          {% for v in education_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="education" value="{{ v }}" {% if v in sel_education %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Has Children
-          <select name="children" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            <option value="1" {% if f_children == '1' %}selected{% endif %}>Yes</option>
-            <option value="0" {% if f_children == '0' %}selected{% endif %}>No</option>
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Household Size</legend>
+          {% for v in household_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="household_size" value="{{ v }}" {% if v|stringformat:"s" in sel_household %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
 
-        <label>Preferred Category
-          <select name="preferred_category" style="width:100%; padding:6px; border:1px solid var(--border); border-radius:6px;">
-            <option value="">Any</option>
-            {% for v in prefcat_opts %}
-              <option value="{{ v }}" {% if f_prefcat == v %}selected{% endif %}>{{ v }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <fieldset style="border:0;"><legend style="font-weight:600;">Has Children</legend>
+          <label style="display:block;"><input type="checkbox" name="children" value="1" {% if '1' in sel_children %}checked{% endif %}> Yes</label>
+          <label style="display:block;"><input type="checkbox" name="children" value="0" {% if '0' in sel_children %}checked{% endif %}> No</label>
+        </fieldset>
+
+        <fieldset style="border:0;"><legend style="font-weight:600;">Monthly Income (SGD)</legend>
+          {% for label, lo, hi in income_ranges %}
+            <label style="display:block;">
+              <input type="checkbox" name="income" value="{{ label }}" {% if label in sel_income %}checked{% endif %}>
+              {{ label }}
+            </label>
+          {% endfor %}
+        </fieldset>
+
+        <fieldset style="border:0;"><legend style="font-weight:600;">Preferred Category</legend>
+          {% for v in prefcat_opts %}
+            <label style="display:block;">
+              <input type="checkbox" name="preferred_category" value="{{ v }}" {% if v in sel_prefcat %}checked{% endif %}>
+              {{ v }}
+            </label>
+          {% endfor %}
+        </fieldset>
       </div>
+
       <div style="display:flex; gap:8px; margin-top:12px;">
         <button type="submit" style="padding:6px 12px; border:1px solid var(--border); background:var(--accent); color:#fff; border-radius:6px;">Apply</button>
         <a href="{% url 'adminpanel:customer_list' %}" style="padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:6px; text-decoration:none;">Reset</a>
@@ -83,6 +101,12 @@
   <thead>
     <tr>
       <th>ID</th>
+      <th>First Name</th>
+      <th>Last Name</th>
+      <th>Phone</th>
+      <th>Email</th>
+      <th>Address</th>
+      <th>Postal Code</th>
       <th>Age</th>
       <th>Gender</th>
       <th>Employment Status</th>
@@ -92,12 +116,19 @@
       <th>Has Children</th>
       <th>Monthly Income (SGD)</th>
       <th>Preferred Category</th>
+      <th>Actions</th>
     </tr>
   </thead>
   <tbody>
     {% for c in customers %}
       <tr>
         <td>{{ c.id }}</td>
+        <td>{{ c.first_name|default:"—" }}</td>
+        <td>{{ c.last_name|default:"—" }}</td>
+        <td>{{ c.phone|default:"—" }}</td>
+        <td>{{ c.email|default:"—" }}</td>
+        <td>{{ c.address|default:"—" }}</td>
+        <td>{{ c.postal_code|default:"—" }}</td>
         <td>{{ c.age|default:"—" }}</td>
         <td>{{ c.gender|default:"—" }}</td>
         <td>{{ c.employment_status|default:"—" }}</td>
@@ -107,19 +138,21 @@
         <td>{% if c.has_children %}Yes{% else %}No{% endif %}</td>
         <td>{% if c.monthly_income is not None %}{{ c.monthly_income|floatformat:2 }}{% else %}—{% endif %}</td>
         <td>{{ c.preferred_category|default:"—" }}</td>
+        <td><a href="{% url 'adminpanel:customer_detail' c.id %}">View</a></td>
       </tr>
     {% empty %}
-      <tr><td colspan="9">No customers found.</td></tr>
+      <tr><td colspan="17">No customers found.</td></tr>
     {% endfor %}
   </tbody>
 </table>
 
 <div style="margin-top:10px;">
-  {% if customers.has_previous %}<a href="?page={{ customers.previous_page_number }}&q={{ q }}">Prev</a>{% endif %}
+  {% if customers.has_previous %}
+    <a href="?page={{ customers.previous_page_number }}{% if qs_params %}&{{ qs_params }}{% endif %}">Prev</a>
+  {% endif %}
   Page {{ customers.number }} of {{ customers.paginator.num_pages }}
-  {% if customers.has_next %}<a href="?page={{ customers.next_page_number }}&q={{ q }}">Next</a>{% endif %}
+  {% if customers.has_next %}
+    <a href="?page={{ customers.next_page_number }}{% if qs_params %}&{{ qs_params }}{% endif %}">Next</a>
+  {% endif %}
 </div>
 {% endblock %}
-
-
-

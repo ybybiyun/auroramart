@@ -16,6 +16,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.contrib.auth import logout
 from django.http import HttpResponse
+from urllib.parse import urlencode
+
 
 def logout_simple(request):
     logout(request)
@@ -79,7 +81,7 @@ def staff_edit(request, pk):
 
 @login_required
 def adminpanel(request):
-    category_id = request.GET.get('category')  # Category.category_id
+    category_id = request.GET.get('category')  
     start_str = request.GET.get('start')
     end_str = request.GET.get('end')
 
@@ -94,7 +96,6 @@ def adminpanel(request):
     except ValueError:
         end_date = today
 
-    # Base querysets (optionally filtered by category)
     product_qs = Product.objects.all()
     if category_id:
         product_qs = product_qs.filter(product_subcategory__category_id=category_id)
@@ -109,7 +110,6 @@ def adminpanel(request):
     total_units = totals.get('total_units') or 0
     inventory_value = totals.get('inventory_value') or 0.0
 
-    # Sales from OrderItems within date range (category filtered at item level)
     sales_items = OrderItem.objects.filter(order__order_date__gte=start_date, order__order_date__lte=end_date)
     if category_id:
         sales_items = sales_items.filter(product__product_subcategory__category_id=category_id)
@@ -240,9 +240,9 @@ def bulk_products_upload(request):
 
                     sku         = row_l.get('sku')
                     name        = row_l.get('name')
-                    cat_name    = row_l.get('category')              # maps to product_category + Category model
-                    sub_name    = row_l.get('subcategory','')        # optional
-                    desc        = row_l.get('description','')        # optional
+                    cat_name    = row_l.get('category')              
+                    sub_name    = row_l.get('subcategory','')        
+                    desc        = row_l.get('description','')        
                     qty_raw     = row_l.get('qty')
                     price_raw   = row_l.get('price')
                     reorder_raw = row_l.get('reorder_qty') or row_l.get('reorder_quantity') or ''
@@ -368,30 +368,6 @@ def product_create(request):
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
-def product_edit(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Product updated")
-            return redirect('adminpanel:catalogue_list')
-    else:
-        form = ProductForm(instance=product)
-    return render(request, 'adminpanel/product_form.html', {'form': form, 'product': product})
-
-@login_required
-@groups_required('Manager', 'Merchandiser')
-def product_delete(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        product.delete()
-        messages.success(request, "Product deleted")
-        return redirect('adminpanel:catalogue_list')
-    return render(request, 'adminpanel/product_confirm_delete.html', {'product': product})
-
-@login_required
-@groups_required('Manager', 'Merchandiser')
 def product_toggle_active(request, pk):
     product = get_object_or_404(Product, pk=pk)
     product.active = not product.active
@@ -426,20 +402,6 @@ def category_create(request):
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
-def category_edit(request, pk):
-    category = get_object_or_404(Category, pk=pk)
-    if request.method == 'POST':
-        form = CategoryForm(request.POST, instance=category)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Category updated.")
-            return redirect('adminpanel:catalogue_list')
-    else:
-        form = CategoryForm(instance=category)
-    return render(request, 'adminpanel/category_form.html', {'form': form, 'category': category})
-
-@login_required
-@groups_required('Manager', 'Merchandiser')
 def subcategory_create(request):
     if request.method == 'POST':
         form = SubCategoryForm(request.POST)
@@ -450,20 +412,6 @@ def subcategory_create(request):
     else:
         form = SubCategoryForm()
     return render(request, 'adminpanel/subcategory_form.html', {'form': form})
-
-@login_required
-@groups_required('Manager', 'Merchandiser')
-def subcategory_edit(request, pk):
-    subcat = get_object_or_404(SubCategory, pk=pk)
-    if request.method == 'POST':
-        form = SubCategoryForm(request.POST, instance=subcat)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Subcategory updated.")
-            return redirect('adminpanel:catalogue_list')
-    else:
-        form = SubCategoryForm(instance=subcat)
-    return render(request, 'adminpanel/subcategory_form.html', {'form': form, 'subcategory': subcat})
 
 @login_required
 @groups_required('Manager', 'Merchandiser')
@@ -485,13 +433,11 @@ def catalogue_export(request):
     if subcategory_ids:
         qs = qs.filter(product_subcategory__subcategory_id__in=subcategory_ids)
 
-    # Hidden handling (field or HiddenProduct table)
     product_field_names = {f.name for f in Product._meta.fields}
     has_hidden_flag = 'hidden_flag' in product_field_names
     if not has_hidden_flag:
         qs = qs.annotate(hidden_exists=Exists(HiddenProduct.objects.filter(product__pk=OuterRef('pk'))))
 
-    # visibility filter
     vis = set(visibility_filter)
     if vis and vis != {'visible','hidden'}:
         if 'hidden' in vis:
@@ -499,7 +445,6 @@ def catalogue_export(request):
         elif 'visible' in vis:
             qs = qs.filter(hidden_flag=False) if has_hidden_flag else qs.filter(hidden_exists=False)
 
-    # sorting
     if sort == 'sku_asc':
         qs = qs.order_by('sku')
     elif sort == 'sku_desc':
@@ -511,7 +456,6 @@ def catalogue_export(request):
     else:
         qs = qs.order_by('sku')
 
-    # CSV response
     headers = ['SKU','Name','Category','Subcategory','Qty','Reorder Qty','Unit Price','Rating','Hidden']
     rows = []
     for p in qs:
@@ -553,7 +497,6 @@ def inventory_list(request):
     if show_low:
         qs = qs.filter(quantity_on_hand__lte=F('reorder_quantity'))
 
-    # sorting
     if sort == 'sku_asc':
         qs = qs.order_by('sku')
     elif sort == 'sku_desc':
@@ -619,33 +562,157 @@ def inventory_export(request):
     writer.writerows(rows)
     return resp
 
+
 @login_required
 @groups_required('Manager', 'Support')
 def customer_list(request):
     q = (request.GET.get('q') or '').strip()
     page = request.GET.get('page')
 
-    fields = [
-        'id','age','gender','employment_status','occupation','education',
-        'household_size','has_children','monthly_income','preferred_category',
+    sel_age = request.GET.getlist('age')
+    sel_gender = request.GET.getlist('gender')
+    sel_employment = request.GET.getlist('employment')
+    sel_occupation = request.GET.getlist('occupation')
+    sel_education = request.GET.getlist('education')
+    sel_household = request.GET.getlist('household_size')
+    sel_children = request.GET.getlist('children')  # '1' or '0'
+    sel_income = request.GET.getlist('income')
+    sel_prefcat = request.GET.getlist('preferred_category')
+
+    age_ranges = [
+        ('15-20', 15, 20),
+        ('20-30', 20, 30),
+        ('30-40', 30, 40),
+        ('40-50', 40, 50),
+        ('50-60', 50, 60),
+        ('60+', 60, None),
+    ]
+    income_ranges = [
+        ('0-2000', 0, 2000),
+        ('2000-5000', 2000, 5000),
+        ('5000-10000', 5000, 10000),
+        ('10000-20000', 10000, 20000),
+        ('20000+', 20000, None),
     ]
 
-    qs = Customer.objects.only(*fields).order_by('-id')
+    def distinct_values(field):
+        return list(
+            Customer.objects
+            .exclude(**{f"{field}__isnull": True})
+            .exclude(**{field: ""})
+            .values_list(field, flat=True)
+            .distinct()
+            .order_by(field)
+        )
+
+    gender_opts = distinct_values('gender')
+    employment_opts = distinct_values('employment_status')
+    occupation_opts = distinct_values('occupation')
+    education_opts = distinct_values('education')
+    household_opts = list(
+        Customer.objects
+        .exclude(household_size__isnull=True)
+        .values_list('household_size', flat=True)
+        .distinct()
+        .order_by('household_size')
+    )
+    prefcat_opts = distinct_values('preferred_category')
+
+    total = Customer.objects.count()
+    qs = Customer.objects.all().order_by('id')
+    if total >= 101:
+        qs = qs.filter(id__gte=101)
 
     if q:
         qs = qs.filter(
-            Q(gender__icontains=q) |
-            Q(employment_status__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(email__icontains=q) |
+            Q(phone__icontains=q) |
             Q(occupation__icontains=q) |
             Q(education__icontains=q) |
             Q(preferred_category__icontains=q)
         )
 
+    if sel_gender:
+        qs = qs.filter(gender__in=sel_gender)
+    if sel_employment:
+        qs = qs.filter(employment_status__in=sel_employment)
+    if sel_occupation:
+        qs = qs.filter(occupation__in=sel_occupation)
+    if sel_education:
+        qs = qs.filter(education__in=sel_education)
+    if sel_household:
+        ints = []
+        for v in sel_household:
+            try:
+                ints.append(int(v))
+            except ValueError:
+                pass
+        if ints:
+            qs = qs.filter(household_size__in=ints)
+    if sel_children:
+        vals = []
+        for v in sel_children:
+            if v in ('0', '1'):
+                vals.append(int(v))
+        if vals:
+            qs = qs.filter(has_children__in=vals)
+    if sel_prefcat:
+        qs = qs.filter(preferred_category__in=sel_prefcat)
+
+    if sel_age:
+        age_q = Q()
+        for label, lo, hi in age_ranges:
+            if label in sel_age:
+                if hi is None:
+                    age_q |= Q(age__gte=lo)
+                else:
+                    # inclusive lower, exclusive upper to avoid overlap
+                    age_q |= Q(age__gte=lo, age__lt=hi)
+        if age_q:
+            qs = qs.filter(age_q)
+
+    if sel_income:
+        inc_q = Q()
+        for label, lo, hi in income_ranges:
+            if label in sel_income:
+                if hi is None:
+                    inc_q |= Q(monthly_income__gte=lo)
+                else:
+                    inc_q |= Q(monthly_income__gte=lo, monthly_income__lt=hi)
+        if inc_q:
+            qs = qs.filter(inc_q)
+
     paginator = Paginator(qs, 50)
     customers_page = paginator.get_page(page)
+
+    params = request.GET.copy()
+    params.pop('page', None)
+    qs_params = params.urlencode()
+
     return render(request, 'adminpanel/customer_list.html', {
         'customers': customers_page,
         'q': q,
+        # options
+        'age_ranges': age_ranges,
+        'income_ranges': income_ranges,
+        'gender_opts': gender_opts,
+        'employment_opts': employment_opts,
+        'occupation_opts': occupation_opts,
+        'education_opts': education_opts,
+        'household_opts': household_opts,
+        'prefcat_opts': prefcat_opts,
+        'sel_age': sel_age,
+        'sel_gender': sel_gender,
+        'sel_employment': sel_employment,
+        'sel_occupation': sel_occupation,
+        'sel_education': sel_education,
+        'sel_household': sel_household,
+        'sel_children': sel_children,
+        'sel_income': sel_income,
+        'sel_prefcat': sel_prefcat,
+        'qs_params': qs_params,
     })
 
 @login_required
@@ -658,7 +725,6 @@ def customer_detail(request, pk):
                  .order_by('-order_date')
                  .prefetch_related('order_items__product'))
 
-    # paginate orders
     page = request.GET.get('page')
     paginator = Paginator(orders_qs, 25)
     orders = paginator.get_page(page)

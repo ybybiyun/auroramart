@@ -3,11 +3,28 @@
 {% block header_title %}Customer Profile{% endblock %}
 {% block content %}
 <a href="{% url 'adminpanel:customer_list' %}" style="font-size:12px;">← Back to Customers</a>
-<h2 style="margin:10px 0 4px;">{{ customer.first_name|default:"" }} {{ customer.last_name|default:"" }}</h2>
-<p><strong>Email:</strong> {{ customer.email|default:"—" }}</p>
-<p><strong>Phone:</strong> {{ customer.phone|default:"—" }}</p>
-<p><strong>Address:</strong> {{ customer.address|default:"—" }}</p>
-<p><strong>Preferred Category:</strong> {{ customer.preferred_category|default:"—" }}</p>
+
+<table style="margin:14px 0; border-collapse:collapse; width:auto;">
+  <tbody>
+    <tr><th style="text-align:left;padding:4px 8px;">ID</th><td style="padding:4px 8px;">{{ customer.id }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">First Name</th><td style="padding:4px 8px;">{{ customer.first_name|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Last Name</th><td style="padding:4px 8px;">{{ customer.last_name|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Phone</th><td style="padding:4px 8px;">{{ customer.phone|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Email</th><td style="padding:4px 8px;">{{ customer.email|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Address</th><td style="padding:4px 8px;">{{ customer.address|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Postal Code</th><td style="padding:4px 8px;">{{ customer.postal_code|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Age</th><td style="padding:4px 8px;">{{ customer.age|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Gender</th><td style="padding:4px 8px;">{{ customer.gender|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Employment Status</th><td style="padding:4px 8px;">{{ customer.employment_status|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Occupation</th><td style="padding:4px 8px;">{{ customer.occupation|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Education</th><td style="padding:4px 8px;">{{ customer.education|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Household Size</th><td style="padding:4px 8px;">{{ customer.household_size|default:"—" }}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Has Children</th><td style="padding:4px 8px;">{% if customer.has_children %}Yes{% else %}No{% endif %}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Monthly Income (SGD)</th><td style="padding:4px 8px;">{% if customer.monthly_income is not None %}{{ customer.monthly_income|floatformat:2 }}{% else %}—{% endif %}</td></tr>
+    <tr><th style="text-align:left;padding:4px 8px;">Preferred Category</th><td style="padding:4px 8px;">{{ customer.preferred_category|default:"—" }}</td></tr>
+  </tbody>
+</table>
+
 <hr>
 <h3>Order History</h3>
 <p style="font-size:12px;color:#666;">Total orders: {{ total_orders }} • Total spent: {{ total_spent|floatformat:2 }}</p>
@@ -25,7 +42,11 @@
         <td>
           <ul style="margin:0; padding-left:16px;">
             {% for item in o.order_items.all %}
-              <li>{{ item.product.sku }} ({{ item.quantity }})</li>
+              <li>
+                {{ item.product.product_name|default:"—" }}
+                — ID: {{ item.product_id }}
+                — Qty: {{ item.quantity }}
+              </li>
             {% endfor %}
           </ul>
         </td>
@@ -37,12 +58,8 @@
 </table>
 
 <div style="margin-top:10px;">
-  {% if orders.has_previous %}
-    <a href="?page={{ orders.previous_page_number }}">Prev</a>
-  {% endif %}
+  {% if orders.has_previous %}<a href="?page={{ orders.previous_page_number }}">Prev</a>{% endif %}
   Page {{ orders.number }} of {{ orders.paginator.num_pages }}
-  {% if orders.has_next %}
-    <a href="?page={{ orders.next_page_number }}">Next</a>
-  {% endif %}
+  {% if orders.has_next %}<a href="?page={{ orders.next_page_number }}">Next</a>{% endif %}
 </div>
 {% endblock %}
