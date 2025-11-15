@@ -303,7 +303,6 @@ def checkout(request):
                 total += subtotal
         except Exception:
             items = []
-
         form_values = {
             'address': address,
             'postal_code': postal_code,
@@ -315,7 +314,19 @@ def checkout(request):
         form_values['card_exp_month'] = data.get('card_exp_month', '')
         form_values['card_exp_year'] = data.get('card_exp_year', '')
 
-        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'errors': errors, 'form': form_values})
+        # include initial values (as in GET path) so template lookups like
+        # initial.address won't blow up if the view doesn't pass `initial`.
+        initial = {}
+        try:
+            cust = getattr(request.user, 'customer_profile', None)
+            if cust is not None:
+                initial['address'] = getattr(cust, 'address', '') or ''
+                initial['postal_code'] = getattr(cust, 'postal_code', '') or ''
+                initial['phone'] = getattr(cust, 'phone', '') or ''
+        except Exception:
+            pass
+
+        return render(request, 'onlineshopfront/checkout.html', {'items': items, 'total': total, 'errors': errors, 'form': form_values, 'initial': initial})
 
     # create order
     order = Order.objects.create(order_status='Order Placed', order_date=timezone.now().date(), order_price=0.0, required_date=timezone.now().date(), shipping_fee=0.0, customer=cust)

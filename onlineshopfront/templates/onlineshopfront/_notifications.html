@@ -1,3 +1,14 @@
+{% comment %}Simple notifications partial used by base.html. Renders message framework messages if present.{% endcomment
+{% comment %} Simple notifications partial used by base.html. Renders message framework messages if present. {%
+endcomment %}
+{% if messages %}
+<div class="notifications">
+    {% for message in messages %}
+    <div class="notification {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% comment %} Small partial to render Django messages as fixed toasts (non-layout, overlay) {% endcomment %}
 {% if messages %}
 <div id="page-notifications" class="page-notifications">
