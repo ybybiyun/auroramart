@@ -1,0 +1,136 @@
+{% extends "onlineshopfront/base.html" %}
+{% load static %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="checkout-container">
+    <div class="checkout-card">
+        <h2>Checkout</h2>
+
+        {% if not items %}
+        <p>Your cart is empty. <a href="{% url 'onlineshopfront:product_list' %}">Continue shopping</a></p>
+        {% else %}
+
+        <div class="checkout-grid">
+            <div class="checkout-left">
+                <table style="width:100%;border-collapse:collapse;margin-top:12px">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:8px">Product</th>
+                <th style="padding:8px">Price</th>
+                <th style="padding:8px">Qty</th>
+                <th style="padding:8px">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in items %}
+            <tr>
+                <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku }}</div>
+                </td>
+                <td style="padding:8px;text-align:center">${{ it.price }}</td>
+                <td style="padding:8px;text-align:center">{{ it.quantity }}</td>
+                <td style="padding:8px;text-align:center">${{ it.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+                <form method="post" action="{% url 'onlineshopfront:checkout' %}" class="checkout-form">
+                    {% csrf_token %}
+                    <div class="form-section">
+                        <h3  style="padding:8px">Delivery address</h3>
+                        <div class="form-grid"">
+                            <label class="form-field full">
+                                <div class="field-label">Address</div>
+                                <textarea name="address" class="input textarea" >{{ form.address.value|default_if_none:"" }}</textarea>
+                                <!-- {% if errors.address %}<div class="form-error">{{ errors.address }}</div>{% endif %} -->
+                            </label>
+
+                            <label class="form-field">
+                                <div class="field-label" style="padding:8px">Postal / ZIP</div>
+                                <input name="postal_code" class="input" value="{{ form.postal_code.value|default_if_none:""}}" />
+                                <!-- {% if errors.postal_code %}<div class="form-error">{{ errors.postal_code }}</div>{% endif %} -->
+                            </label>
+
+                            <label class="form-field" style="padding:8px">
+                                <div class="field-label">Phone</div>
+                                <input name="phone" class="input" value="{{ form.phone.value|default_if_none:""}}" />
+                                <!-- {% if errors.phone %}<div class="form-error">{{ errors.phone }}</div>{% endif %} -->
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3  style="padding:8px">Payment</h3>
+                        <div class="radio-list">
+                            <label><input type="radio" name="payment_method" value="Card" {% if form.payment_method == 'Card' %}checked{% endif %}> Card</label>
+                            <label><input type="radio" name="payment_method" value="Paynow" {% if form.payment_method == 'Paynow' %}checked{% endif %}> Paynow</label>
+                            <label><input type="radio" name="payment_method" value="Apple Pay" {% if form.payment_method == 'Apple Pay' %}checked{% endif %}> Apple Pay</label>
+                        </div>
+                        <!-- {% if errors.payment_method %}<div class="form-error">{{ errors.payment_method }}</div>{% endif %} -->
+
+                        <div id="card-fields" class="card-fields">
+                            <div class="form-grid card-grid">
+                                <label class="form-field full">
+                                    <div class="field-label"  style="padding:8px">Card number</div>
+                                    <input name="card_number" class="input" value="{{ form.card_number }}" />
+                                </label>
+
+                                <label class="form-field small">
+                                    <div class="field-label"  style="padding:8px">Exp month</div>
+                                    <input name="card_exp_month" class="input" value="{{ form.card_exp_month }}" />
+                                </label>
+
+                                <label class="form-field small">
+                                    <div class="field-label"  style="padding:8px">Exp year</div>
+                                    <input name="card_exp_year" class="input" value="{{ form.card_exp_year }}" />
+                                </label>
+
+                                <label class="form-field small">
+                                    <div class="field-label">CVV</div>
+                                    <input name="card_cvv" class="input" value="" autocomplete="off" />
+                                </label>
+                            </div>
+                            {% if errors.card_number %}<div class="form-error">{{ errors.card_number }}</div>{% endif %}
+                            {% if errors.card_expiry %}<div class="form-error">{{ errors.card_expiry }}</div>{% endif %}
+                            {% if errors.card_cvv %}<div class="form-error">{{ errors.card_cvv }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button  style="padding:8px" margin="20pxm"type="submit" class="place-order-btn">Place order</button>
+                        <a class="link-muted" href="{% url 'onlineshopfront:view_cart' %}">Edit cart</a>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="checkout-right">
+                <div class="summary">
+                    <div class="summary-row"><span>Items</span><span>{{ items|length }}</span></div>
+                    <div class="summary-row total"><span>Total</span><span>${{ total|floatformat:2 }}</span></div>
+                </div>
+            </aside>
+        </div>
+
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Toggle card fields visibility depending on payment method selection
+document.addEventListener('DOMContentLoaded', function(){
+    function updateCardFields(){
+        var selected = document.querySelector('input[name="payment_method"]:checked');
+        var card = document.getElementById('card-fields');
+        if(!selected) { card.style.display = 'none'; return; }
+        card.style.display = (selected.value === 'Card') ? 'block' : 'none';
+    }
+    document.querySelectorAll('input[name="payment_method"]').forEach(function(el){
+        el.addEventListener('change', updateCardFields);
+    });
+    updateCardFields();
+});
+</script>
+
+{% endblock %}

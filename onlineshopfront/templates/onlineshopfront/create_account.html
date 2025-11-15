@@ -8,6 +8,7 @@
     <h2 style="text-align:center">Create Your AuroraMart Account</h2>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}" />
         <div style="display:flex;gap:12px;margin-bottom:8px">
             <input name="first_name" placeholder="First name" style="flex:1;padding:8px" />
             <input name="last_name" placeholder="Last name" style="flex:1;padding:8px" />

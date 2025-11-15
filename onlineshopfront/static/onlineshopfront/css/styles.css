@@ -33,11 +33,29 @@ body {
 
 /* === Header search form === */
 .search-form {
-    flex: 1 1 480px;
-    max-width: 720px;
-    margin: 0 18px;
+    /* Centered in header */
+    position: absolute;
+    /* center relative to the viewport for a true middle placement */
+    left: 50vw;
+    transform: translateX(-50%);
+    width: min(720px, 60vw);
+    z-index: 1100;
     display: flex;
     align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+/* Prevent the search form container from blocking clicks to header actions
+   while keeping the input and button interactive. This avoids the centered
+   search overlay intercepting clicks on the Sign in / Create account links. */
+.search-form {
+    pointer-events: none;
+}
+
+.search-form input[type="search"],
+.search-form button {
+    pointer-events: auto;
 }
 
 .search-form input[type="search"] {
@@ -51,47 +69,7 @@ body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-/* Flash messages (small, unobtrusive) */
-.flash-messages {
-    max-width: 1100px;
-    margin: 0;
-    padding: 0 16px;
-    display: flex;
-    justify-content: center;
-    pointer-events: none;
-    /* allow clicks through when positioned */
-}
-
-/* When flash messages are rendered inside the header we float them over the
-   page content so they do not increase layout height or create a white gap. */
-.header .flash-messages {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: -20px;
-    z-index: 1200;
-    width: auto;
-    pointer-events: none;
-}
-
-.flash-messages .message {
-    pointer-events: auto;
-    background: rgba(255, 255, 255, 0.96);
-    color: #222;
-    padding: 8px 12px;
-    border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-    margin: 4px;
-    font-size: 14px;
-}
-
-.flash-messages .message.success {
-    border-left: 4px solid #2ecc71;
-}
-
-.flash-messages .message.error {
-    border-left: 4px solid #e74c3c;
-}
+/* flash messages removed (project setting: no site-wide notifications) */
 
 .search-form button {
     margin-left: 8px;
@@ -181,6 +159,45 @@ body {
     gap: 12px;
 }
 
+/* Move the cart/auth group to the far right of the header */
+.cart-and-auth {
+    margin-left: auto;
+}
+
+/* Make auth/cart area sit above the centered search form so links remain clickable */
+.cart-and-auth {
+    position: relative;
+    z-index: 1400;
+}
+
+/* Hover / floating effect for auth links and cart */
+.auth-link,
+.cart-link {
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    cursor: pointer;
+}
+
+.auth-link:hover,
+.cart-link:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-link:active,
+.cart-link:active {
+    transform: translateY(-2px);
+}
+
+/* Ensure auth links are left of the cart and the cart is the final (rightmost) item */
+.cart-and-auth .auth-links {
+    order: 1;
+}
+
+.cart-and-auth .cart-link {
+    order: 2;
+}
+
 .auth-links {
     display: flex;
     align-items: center;
@@ -194,6 +211,9 @@ body {
     padding: 6px 10px;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    /* ensure pointer cursor on auth links */
+    display: inline-block;
 }
 
 .auth-link:hover {
@@ -248,6 +268,8 @@ body {
     min-height: 100vh;
     border-top-left-radius: 15px;
     /* Curved corner as seen in image */
+    position: relative;
+    /* make notifications position relative to content */
 }
 
 /* === Search Bar === */
@@ -303,7 +325,7 @@ body {
 .product-card {
     border: 1px solid #eaeaea;
     border-radius: 8px;
-    padding: 18px 12px;
+    padding: 18px 18px;
     text-align: center;
     background: #fff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
@@ -324,6 +346,193 @@ body {
     object-fit: contain;
     margin: 0 auto 14px auto;
     display: block;
+}
+
+/* Enhanced product card styling */
+.product-tile {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card {
+    position: relative;
+    padding: 20px 16px 56px 16px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(30, 30, 60, 0.06);
+    transition: transform 220ms cubic-bezier(.2, .9, .3, 1), box-shadow 220ms ease;
+}
+
+.product-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 18px 40px rgba(30, 30, 60, 0.12);
+}
+
+.product-card .product-title {
+    font-size: 15px;
+    color: #222;
+    margin-top: 8px;
+    font-weight: 700;
+    min-height: 42px;
+}
+
+.product-card .product-sub {
+    font-size: 13px;
+    color: #777;
+    margin-top: 6px;
+}
+
+.product-card .product-price {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111;
+    margin-top: 10px;
+}
+
+/* Add-to-cart overlay button centered at the bottom of the card */
+.card-overlay-form {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 14px;
+    width: calc(100% - 32px);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.card-overlay-form .overlay-add-btn {
+    pointer-events: auto;
+    background: linear-gradient(90deg, #7b2be3, #d14cf9);
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 0 8px 18px rgba(140, 50, 200, 0.18);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.product-card:hover .card-overlay-form .overlay-add-btn {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Price badge in corner */
+.product-card .price-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(90deg, #fff, #fff);
+    color: #111;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 13px;
+    box-shadow: 0 6px 14px rgba(20, 20, 40, 0.06);
+}
+
+/* Responsive tweaks */
+@media (max-width: 980px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .product-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+
+    .header {
+        height: auto;
+        padding-bottom: 26px;
+    }
+}
+
+/* --- Page notifications (toasts) --- */
+.page-notifications {
+    position: absolute;
+    /* center within the content container */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1400;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+}
+
+.notification {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.98);
+    color: #111;
+    padding: 12px 18px;
+    border-radius: 10px;
+    box-shadow: 0 14px 40px rgba(12, 12, 30, 0.14);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    max-width: 560px;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.notification.success {
+    border-left: 5px solid #2ecc71;
+}
+
+.notification.error {
+    border-left: 5px solid #e74c3c;
+}
+
+.notification.warning {
+    border-left: 5px solid #f39c12;
+}
+
+.notification.fade-out {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+}
+
+/* When a notification is placed inside a product card */
+.in-card-notif {
+    position: absolute !important;
+    bottom: 58px;
+    /* above the add-to-cart button */
+    left: 50% !important;
+    transform: translateX(-50%);
+    box-shadow: 0 12px 28px rgba(10, 10, 30, 0.18);
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 1401;
+}
+
+.notif-close {
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px;
+}
+
+@media (max-width: 880px) {
+    .page-notifications {
+        right: 12px;
+        left: 12px;
+        top: 82px;
+    }
+
+    .notification {
+        max-width: none;
+    }
 }
 
 .product-title {
@@ -356,6 +565,60 @@ body {
 .product-card-link:focus {
     outline: 3px solid rgba(0, 123, 255, 0.25);
     outline-offset: 4px;
+    min-width: 180px;
+    max-width: 320px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #0f1720;
+}
+
+.in-card-notif .notif-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    background: linear-gradient(180deg, #2ecc71, #27ae60);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(40, 160, 70, 0.18);
+}
+
+.in-card-notif .notif-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.in-card-notif .notif-title {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.in-card-notif .notif-sub {
+    font-size: 12px;
+    color: #475569;
+}
+
+@keyframes notif-pop {
+    from {
+        transform: translateX(-50%) translateY(6px) scale(0.98);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(-50%) translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.in-card-notif.pop {
+    animation: notif-pop 220ms cubic-bezier(.2, .9, .3, 1) both;
 }
 
 .profile-info {
@@ -374,4 +637,8 @@ body {
 
 .product-card-link .product-card {
     height: 100%;
+}
+
+.textarea {
+  width: 1000px;
 }

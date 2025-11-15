@@ -8,6 +8,7 @@
     <h2 style="text-align:center">Complete your profile</h2>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}" />
         <div style="display:flex;gap:12px;margin-bottom:8px">
             <input name="first_name" placeholder="First name" value="{{ customer.first_name|default_if_none:'' }}"
                 style="flex:1;padding:8px" />
@@ -26,8 +27,8 @@
             <input name="age" placeholder="Age" style="width:120px;padding:8px"
                 value="{{ customer.age|default_if_none:0 }}" />
             <select name="gender" style="padding:8px">
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+                <option value="Male" {% if customer.gender=='Male' %}selected{% endif %}>Male</option>
+                <option value="Female" {% if customer.gender=='Female' %}selected{% endif %}>Female</option>
             </select>
             <input name="preferred_category" placeholder="Preferred category" style="flex:1;padding:8px"
                 value="{{ customer.preferred_category|default_if_none:'' }}" />
