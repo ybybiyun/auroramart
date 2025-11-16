@@ -26,7 +26,7 @@
                     <tbody>
                         {% for it in items %}
                         <tr>
-                            <td class="product-cell">{{ it.name }}<div class="sku">SKU: {{ it.sku }}</div>
+                            <td class="product-cell">{{ it.name }}
                             </td>
                             <td class="numeric">${{ it.price }}</td>
                             <td class="numeric">{{ it.quantity }}</td>
@@ -89,9 +89,6 @@
                                     <input name="card_cvv" class="input" value="" autocomplete="off" />
                                 </label>
                             </div>
-                            {% if errors.card_number %}<div class="form-error">{{ errors.card_number }}</div>{% endif %}
-                            {% if errors.card_expiry %}<div class="form-error">{{ errors.card_expiry }}</div>{% endif %}
-                            {% if errors.card_cvv %}<div class="form-error">{{ errors.card_cvv }}</div>{% endif %}
                         </div>
                     </div>
 
@@ -106,6 +103,40 @@
                 <div class="summary">
                     <div class="summary-row total"><span>Total</span><span>${{ total|floatformat:2 }}</span></div>
                 </div>
+
+                {% comment %} 
+                =================================================
+                SECTION: AI "Complete Your Set" (Newly Added)
+                =================================================
+                {% endcomment %}
+                {% if recommended_products %}
+                <div class="recommendation-section" style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:8px">
+                    
+                    <h3 style="margin:0 0 12px 0;font-size: 1em;">Complete Your Set</h3>
+                    
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        
+                        {% for prod in recommended_products %}
+                        <a href="{% url 'onlineshopfront:product_detail' prod.pk %}"
+                            style="width:140px;text-decoration:none;color:inherit">
+                            
+                            <img src="{% static 'images/coke.png' %}" alt="{{ prod.product_name }}"
+                                style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
+                                
+                            <div style="font-size:13px;margin-top:6px;font-weight:600">{{ prod.product_name }}</div>
+                            <div style="color:#666;font-size:13px">${{ prod.unit_price }}</div>
+                        </a>
+                        {% endfor %}
+                        
+                    </div>
+                </div>
+                {% endif %}
+                {% comment %} 
+                =================================================
+                END: AI "Complete Your Set" SECTION
+                =================================================
+                {% endcomment %}
+
             </aside>
         </div>
 

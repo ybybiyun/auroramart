@@ -31,12 +31,12 @@
             </thead>
             <tbody>
                 {% for it in items %}
-                <tr data-sku="{{ it.sku }}" data-price="{{ it.price }}">
+                <tr data-price="{{ it.price }}">
                     <td style="padding:8px;vertical-align:middle">
                         <input type="checkbox" class="select-checkbox" name="selected" value="{{ it.sku }}"
                             form="checkout-form" aria-label="Select item {{ it.name }}" />
                     </td>
-                    <td style="padding:8px">{{ it.name }}<div style="color:#666;font-size:12px">SKU: {{ it.sku }}</div>
+                    <td style="padding:8px">{{ it.name }}
                     </td>
                     <td style="padding:8px;text-align:center">${{ it.price }}</td>
                     <td style="padding:8px;text-align:center"><input type="number" name="qty_{{ it.sku }}"
@@ -71,7 +71,7 @@
 
     {% if recommended_products %}
       <div class="recommendations" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-        <h3>You Might Also Like...</h3>
+        <h3>Complete the Set...</h3>
         
         <div class="product-grid" style="display:flex; flex-wrap:wrap; gap:16px;">
           {% for product in recommended_products %}
@@ -81,6 +81,8 @@
                 
                 {% if product.image_url %}
                   <img src="{{ product.image_url }}" alt="{{ product.product_name }}" style="width:100%; height:auto; aspect-ratio: 1 / 1;">
+                {% else %}
+                  <img src="{% static 'images/coke.png' %}" alt="{{ product.product_name }}" style="width:100%; height:auto; aspect-ratio: 1 / 1; object-fit: contain;">
                 {% endif %}
                 
                 <h4 style="font-size: 16px; margin: 8px 0;">{{ product.product_name }}</h4>
