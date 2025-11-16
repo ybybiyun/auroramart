@@ -56,6 +56,39 @@
         </form>
     </details>
 
+    {% comment %} 
+    =================================================
+    SECTION: AI "Next Best Action" (Newly Added)
+    =================================================
+    {% endcomment %}
+    {% if next_best_products %}
+    <div class="recommendation-section" style="max-width:900px;margin:20px auto;padding:12px 20px;background:#fff;border-radius:8px">
+        
+        <h3 style="margin:0 0 12px 0">You Might Also Like...</h3>
+        
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+            
+            {% for prod in next_best_products %}
+            <a href="{% url 'onlineshopfront:product_detail' prod.pk %}"
+                style="width:140px;text-decoration:none;color:inherit">
+                
+                <img src="{% static 'images/coke.png' %}" alt="{{ prod.product_name }}"
+                    style="width:100%;height:100px;object-fit:contain;background:#fff;border:1px solid #eee;border-radius:6px" />
+                    
+                <div style="font-size:13px;margin-top:6px;font-weight:600">{{ prod.product_name }}</div>
+                <div style="color:#666;font-size:13px">${{ prod.unit_price }}</div>
+            </a>
+            {% endfor %}
+            
+        </div>
+    </div>
+    {% endif %}
+    {% comment %} 
+    =================================================
+    END: AI "Next Best Action" SECTION
+    =================================================
+    {% endcomment %}
+
 
     <div class="product-grid">
         {% for p in products %}

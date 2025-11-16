@@ -1,7 +1,36 @@
 {% extends "onlineshopfront/base.html" %}
 {% load static %}
+
 {% block content %}
+
+{% comment %} 
+If AI recommendations exist, show them using
+your "Featured Products" styling.
+{% endcomment %}
+{% if recommended_products %}
 <div class="main">
+    <h3 style="max-width:900px;auto 12px;">Recommended for You in {{ predicted_category }}</h3>
+    <div class="products product-grid">
+        {% for product in recommended_products %}
+        <a class="product-card-link" href="{% url 'onlineshopfront:product_detail' product.pk %}">
+            <div class="product-card">
+                <img src="{% static 'images/coke.png' %}" alt="{{ product.product_name }}">
+                <h3>{{ product.product_name }}</h3>
+                <p>{{ product.product_description }}</p>
+                <p class="price">${{ product.unit_price }}</p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+{% comment %} 
+Otherwise, show the default "Featured Products"
+(for logged-out users).
+{% endcomment %}
+{% else %}
+<div class="main">
+    <h3 style="max-width:900px;margin:20px auto 12px;padding-left:20px;">Featured Products</h3>
     <div class="products product-grid">
         {% for product in featured %}
         <a class="product-card-link" href="{% url 'onlineshopfront:product_detail' product.pk %}">
@@ -15,4 +44,6 @@
         {% endfor %}
     </div>
 </div>
+{% endif %}
+
 {% endblock %}

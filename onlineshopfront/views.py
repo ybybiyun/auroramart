@@ -37,7 +37,7 @@ def index(request):
                 try:
                     predicted_category = recommender.predict_preferred_category(profile)
                     if predicted_category:
-                        recommended_products = Product.objects.filter(product_category__iexact=predicted_category).order_by('-product_rating')[:8]
+                        recommended_products = Product.objects.filter(product_category__iexact=predicted_category).order_by('-product_rating')[:24]
                 except Exception:
                     predicted_category = None
                     recommended_products = None
@@ -46,6 +46,8 @@ def index(request):
 
     return render(request, "onlineshopfront/index.html", {"featured": featured, "categories": categories, 'predicted_category': predicted_category, 'recommended_products': recommended_products})
 
+
+# In onlineshopfront/views.py
 
 def product_list(request, category_slug=None):
     category = None
@@ -124,6 +126,40 @@ def product_list(request, category_slug=None):
             except Exception:
                 pass
 
+    # --- START: "Next Best Action" AI Logic ---
+    next_best_products = []
+    if request.user.is_authenticated:
+        try:
+            skus_in_cart = []
+            cust = getattr(request.user, 'customer_profile', None)
+            cart = Cart.objects.filter(cart_customer=cust).first()
+            if cart:
+                # Get all SKUs from the user's cart
+                skus_in_cart = [item.product.sku for item in cart.items.all()]
+
+            if skus_in_cart:
+                # Get recommendations based on the cart
+                recommended_skus = recommender.get_associated_products(skus_in_cart)
+                
+                # Get SKUs for products in the category we are *already* viewing
+                current_category_skus = list(products.values_list('sku', flat=True))
+                
+                # Find products that are:
+                # 1. Recommended by the AI
+                # 2. NOT already in the cart
+                # 3. NOT in the category we are currently looking at
+                next_best_products = Product.objects.filter(
+                    sku__in=recommended_skus
+                ).exclude(
+                    sku__in=skus_in_cart
+                ).exclude(
+                    sku__in=current_category_skus
+                )[:4] # Show top 4
+                
+        except Exception as e:
+            print(f"Error getting next best action: {e}")
+    # --- END: "Next Best Action" AI Logic ---
+
     # pagination
     paginator = Paginator(products, 24)  # 24 products per page
     page_number = request.GET.get("page")
@@ -152,17 +188,26 @@ def product_list(request, category_slug=None):
             setattr(p, 'similar_products', [])
 
     # Pop any in-card notification set by add_to_cart for non-JS clients
-    in_card_notif = None
+    in_card_notif = None  # <-- THE FIX: Initialize to None
     try:
         in_card_notif = request.session.pop('in_card_notif', None)
         request.session.modified = True
     except Exception:
-        in_card_notif = None
+        pass # It's already None
 
     categories = Category.objects.all()
     # Rating choices as strings so template comparisons work with request.GET values
     rating_choices = [str(x) for x in range(0, 6)]
-    return render(request, "onlineshopfront/product_list.html", {"category": category, "products": page_obj, "q": q, "categories": categories, 'in_card_notif': in_card_notif, 'rating_choices': rating_choices})
+    
+    return render(request, "onlineshopfront/product_list.html", {
+        "category": category, 
+        "products": page_obj, 
+        "q": q, 
+        "categories": categories, 
+        'in_card_notif': in_card_notif, 
+        'rating_choices': rating_choices,
+        'next_best_products': next_best_products  # <-- Added this
+    })
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
