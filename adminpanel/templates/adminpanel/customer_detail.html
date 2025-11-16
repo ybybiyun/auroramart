@@ -42,15 +42,10 @@
         <td>
           <ul style="margin:0; padding-left:16px;">
             {% for item in o.order_items.all %}
-<<<<<<< HEAD
-              <li>{{ item.product.sku }} ({{ item.quantity }})</li>
-=======
               <li>
-                {{ item.product.product_name|default:"—" }}
-                — ID: {{ item.product_id }}
-                — Qty: {{ item.quantity }}
+                {% firstof item.product.name item.product.title item.product.product_name item.product.sku %}
+                — SKU: {{ item.product.sku }} × {{ item.quantity }}
               </li>
->>>>>>> 18e19c9857ef5b980b6d58ad55173ea9c239a16d
             {% endfor %}
           </ul>
         </td>
@@ -62,7 +57,6 @@
 </table>
 
 <div style="margin-top:10px;">
-<<<<<<< HEAD
   {% if orders.has_previous %}
     <a href="?page={{ orders.previous_page_number }}">Prev</a>
   {% endif %}
@@ -70,10 +64,5 @@
   {% if orders.has_next %}
     <a href="?page={{ orders.next_page_number }}">Next</a>
   {% endif %}
-=======
-  {% if orders.has_previous %}<a href="?page={{ orders.previous_page_number }}">Prev</a>{% endif %}
-  Page {{ orders.number }} of {{ orders.paginator.num_pages }}
-  {% if orders.has_next %}<a href="?page={{ orders.next_page_number }}">Next</a>{% endif %}
->>>>>>> 18e19c9857ef5b980b6d58ad55173ea9c239a16d
 </div>
 {% endblock %}
